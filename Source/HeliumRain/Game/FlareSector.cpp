@@ -17,8 +17,8 @@
 ----------------------------------------------------*/
 
 #define LOCTEXT_NAMESPACE "FlareSector"
-//#define DEBUG_SECTORLOADTIME
-//#define DEBUG_SPACESHIPPLACEMENT
+// #define DEBUG_SECTORLOADTIME
+// #define DEBUG_SPACESHIPPLACEMENT
 
 #define SHIP_LARGE_EXPLOSION_CHANCE 0.05f
 #define SHIP_SMALL_EXPLOSION_CHANCE 0.10f
@@ -591,7 +591,7 @@ void UFlareSector::SetSpacecraftSpawnPosition(UFlareSimulatedSpacecraft* ParentS
 			else
 			{
 #ifdef DEBUG_SPACESHIPPLACEMENT
-				FLOGV("UFlareSector::SetSpacecraftSpawnPosition : Safe spawn '%s' safety movement failure. Station %d, Docked %d",
+				FLOGV("UFlareSector::SetSpacecraftSpawnPosition : Safe spawn '%s' no safety movement. Station %d, Docked %d",
 					*ParentSpacecraft->GetImmatriculation().ToString(),
 					Spacecraft->IsStation(),
 					Spacecraft->GetNavigationSystem()->IsDocked());
@@ -600,19 +600,29 @@ void UFlareSector::SetSpacecraftSpawnPosition(UFlareSimulatedSpacecraft* ParentS
 
 			RootComponent->SetPhysicsLinearVelocity(ParentSpacecraft->GetData().LinearVelocity, false);
 			RootComponent->SetPhysicsAngularVelocityInDegrees(ParentSpacecraft->GetData().AngularVelocity, false);
-			break;
-
-			// First spawn
 		}
+		break;
+
+		// First spawn
 		case EFlareSpawnMode::Spawn:
 		{
 			if (ParentSpacecraft->GetDescription()->IsSubstation)
 			{
 				Spacecraft->SetActorLocationAndRotation(ParentSpacecraft->GetData().Location, ParentSpacecraft->GetData().Rotation);
+
+#ifdef DEBUG_SPACESHIPPLACEMENT
+				FLOG("UFlareSector::SetSpacecraftSpawnPosition: Is Substation, placing at specific location");
+#endif
+
 			}
 			else
 			{
 				PlaceSpacecraft(Spacecraft, ParentSpacecraft->GetData().Location, ParentSpacecraft->GetData().Rotation);
+
+#ifdef DEBUG_SPACESHIPPLACEMENT
+				FLOG("UFlareSector::SetSpacecraftSpawnPosition: Not Substation, placing at safe location");
+#endif
+
 			}
 
 #ifdef DEBUG_SPACESHIPPLACEMENT
@@ -624,8 +634,9 @@ void UFlareSector::SetSpacecraftSpawnPosition(UFlareSimulatedSpacecraft* ParentS
 
 			RootComponent->SetPhysicsLinearVelocity(FVector::ZeroVector, false);
 			RootComponent->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector, false);
-			break;
 		}
+		break;
+
 		// Incoming in sector
 		case EFlareSpawnMode::Travel:
 		{
@@ -705,6 +716,7 @@ void UFlareSector::SetSpacecraftSpawnPosition(UFlareSimulatedSpacecraft* ParentS
 			RootComponent->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector, false);
 		}
 		break;
+
 		case EFlareSpawnMode::Exit:
 		{
 			float SpawnDistance = GetSectorLimits() * 0.85;
@@ -725,6 +737,8 @@ void UFlareSector::SetSpacecraftSpawnPosition(UFlareSimulatedSpacecraft* ParentS
 			RootComponent->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector, false);
 		}
 		break;
+
+		// Docked internally to shipmaster
 		case EFlareSpawnMode::InternalDocked:
 		{
 			if (ParentSpacecraft->GetShipMaster())
@@ -760,8 +774,8 @@ void UFlareSector::SetSpacecraftSpawnPosition(UFlareSimulatedSpacecraft* ParentS
 			{
 				PlaceSpacecraft(Spacecraft, ParentSpacecraft->GetData().Location, ParentSpacecraft->GetData().Rotation);
 			}
-			break;
 		}
+		break;
 	}
 
 	ParentSpacecraft->SetInternalDockedTo(NULL);

@@ -182,17 +182,17 @@ void SFlareShipStatus::OnMouseEnter(const FGeometry& MyGeometry, const FPointerE
 				int32 MaxAmmo = 0;
 				int32 CurrentSpentAmmo = 0;
 
-				UFlareSpacecraftComponentsCatalog* Catalog = TargetShip->GetGame()->GetShipPartsCatalog();
-				for (int32 ComponentIndex = 0; ComponentIndex < TargetShip->GetData().Components.Num(); ComponentIndex++)
-				{
-					FFlareSpacecraftComponentSave* ComponentData = &TargetShip->GetData().Components[ComponentIndex];
-					FFlareSpacecraftComponentDescription* ComponentDescription = Catalog->Get(ComponentData->ComponentIdentifier);
+				TArray<FFlareSpacecraftComponentSave*> WeaponComponentPointers = TargetShip->GetWeaponComponentPointers();
+				TArray<FFlareSpacecraftComponentDescription*> WeaponComponentDescriptions = TargetShip->GetWeaponComponentDescriptions();
+				int32 ComponentsNum = WeaponComponentPointers.Num();
 
-					if (ComponentDescription->Type == EFlarePartType::Weapon)
-					{
-						MaxAmmo += ComponentDescription->WeaponCharacteristics.AmmoCapacity;
-						CurrentSpentAmmo += ComponentData->Weapon.FiredAmmo;
-					}
+				for (int32 ComponentIndex = 0; ComponentIndex < ComponentsNum; ComponentIndex++)
+				{
+					FFlareSpacecraftComponentSave* ComponentData = WeaponComponentPointers[ComponentIndex];
+					FFlareSpacecraftComponentDescription* ComponentDescription = WeaponComponentDescriptions[ComponentIndex];
+
+					MaxAmmo += ComponentDescription->WeaponCharacteristics.AmmoCapacity;
+					CurrentSpentAmmo += ComponentData->Weapon.FiredAmmo;
 				}
 
 				Info = FText::Format(LOCTEXT("AmmoInfoFormat", "{0}\nAmmo : {1} / {2}"), Info,

@@ -126,6 +126,7 @@ AFlareGame::AFlareGame(const class FObjectInitializer& PCIP)
 	TArray<UFlareTechnologyCatalogEntry*> DisableTechnologies;
 
 	TechnologyCatalog->TechnologiesByLevel.Empty();
+	TechnologyCatalog->TechnologyCatalogMap.Empty();
 
 	for (UFlareTechnologyCatalogEntry* Technology : TechnologyCatalog->TechnologyCatalog)
 	{
@@ -137,7 +138,7 @@ AFlareGame::AFlareGame(const class FObjectInitializer& PCIP)
 		}
 		else
 		{
-
+			TechnologyCatalog->TechnologyCatalogMap.Add(TechnologyData->Identifier, Technology);
 			if (TechnologyCatalog->TechnologiesByLevel.Contains(TechnologyData->Level))
 			{
 				TArray<FFlareTechnologyDescription*> ExistingArray = TechnologyCatalog->TechnologiesByLevel[TechnologyData->Level];
@@ -673,6 +674,7 @@ void AFlareGame::Scrap(FName ShipImmatriculation, FName TargetStationImmatricula
 	}
 
 	int64 ScrapRevenue = 0;
+	UFlareCargoBay* ScrappingCargoBay = ScrapingStation->GetActiveCargoBay();
 
 	for (int ResourceIndex = 0; ResourceIndex < ShipToScrap->GetDescription()->CycleCost.InputResources.Num() ; ResourceIndex++)
 	{
@@ -682,7 +684,7 @@ void AFlareGame::Scrap(FName ShipImmatriculation, FName TargetStationImmatricula
 		ScrapRevenue += Resource->Quantity * CurrentSector->GetResourcePrice(&Resource->Resource->Data, EFlareResourcePriceContext::Default);
 		int ResourceToGive = Resource->Quantity;
 
-		ResourceToGive -= ScrapingStation->GetActiveCargoBay()->GiveResources(&Resource->Resource->Data, Resource->Quantity, ScrapingStation->GetCompany());
+		ResourceToGive -= ScrappingCargoBay->GiveResources(&Resource->Resource->Data, Resource->Quantity, ScrapingStation->GetCompany());
 		// Remaining resources are lost
 	}
 
@@ -1212,7 +1214,7 @@ UFlareSimulatedSpacecraft* AFlareGame::CreateSkirmishSpacecraft(UFlareSimulatedS
 		{
 			Component.ComponentIdentifier = Order.RCSType;
 		}
-		if (ComponentDescription->Type == EFlarePartType::Weapon)
+		else if (ComponentDescription->Type == EFlarePartType::Weapon)
 		{
 			FName SlotName = Component.ShipSlotIdentifier;
 			int32 SlotGroupIndex = UFlareSimulatedSpacecraftWeaponsSystem::GetGroupIndexFromSlotIdentifier(Ship->GetDescription(), SlotName);

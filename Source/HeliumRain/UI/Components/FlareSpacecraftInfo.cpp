@@ -445,10 +445,11 @@ void SFlareSpacecraftInfo::SetSpacecraft(UFlareSimulatedSpacecraft* Target)
 		// Fill the cargo bay
 		if (!TargetSpacecraft->IsPlayerHostile())
 		{
+			UFlareCargoBay* TargetSpacecraftCargoBay = TargetSpacecraft->GetActiveCargoBay();
 			// Get slots
-			for (int32 CargoIndex = 0; CargoIndex < TargetSpacecraft->GetActiveCargoBay()->GetSlotCount() ; CargoIndex++)
+			for (int32 CargoIndex = 0; CargoIndex < TargetSpacecraftCargoBay->GetSlotCount() ; CargoIndex++)
 			{
-				FFlareCargo* Cargo = TargetSpacecraft->GetActiveCargoBay()->GetSlot(CargoIndex);
+				FFlareCargo* Cargo = TargetSpacecraftCargoBay->GetSlot(CargoIndex);
 				if(Cargo->Lock == EFlareResourceLock::Hidden && Cargo->Quantity == 0)
 				{
 					continue;
@@ -582,7 +583,7 @@ void SFlareSpacecraftInfo::Show()
 		bool IsStation = TargetSpacecraft->IsStation();
 		bool IsCargoShip = (TargetSpacecraft->GetDescription()->CargoBayCount > 0) && !IsStation;
 		bool IsCargoStation = (TargetSpacecraft->GetDescription()->CargoBayCount > 0) && IsStation && !Owned && IsFriendly;
-		bool IsAutoDocking = PlayerShip->GetCompany()->IsTechnologyUnlocked("auto-docking");
+		bool IsAutoDocking = PlayerShip->GetCompany()->IsTechnologyUnlocked(PC->GetGame()->GetCacheSystem()->ID_TechAutoDocking);
 
 		// Permissions
 		bool CanDock =     !IsDocked && InActiveSector && IsFriendly && ActiveTargetSpacecraft && ActiveTargetSpacecraft->GetDockingSystem()->HasCompatibleDock(SelectedShip);
@@ -653,7 +654,7 @@ void SFlareSpacecraftInfo::Show()
 		}
 
 		// Can dock
-		if (!PlayerShip->GetCompany()->IsTechnologyUnlocked("auto-docking"))
+		if (!PlayerShip->GetCompany()->IsTechnologyUnlocked(PC->GetGame()->GetCacheSystem()->ID_TechAutoDocking))
 		{
 			DockButton->SetHelpText(LOCTEXT("ShipAutoDockNeededInfo", "You need the Auto Docking technology to dock automatically at stations"));
 			DockButton->SetDisabled(true);
@@ -687,7 +688,7 @@ void SFlareSpacecraftInfo::Show()
 		if (IsCargoStation)
 		{
 			bool FoundValidTrade = false;
-			if (!PlayerShip->GetCompany()->IsTechnologyUnlocked("auto-docking"))
+			if (!PlayerShip->GetCompany()->IsTechnologyUnlocked(PC->GetGame()->GetCacheSystem()->ID_TechAutoDocking))
 			{
 				TradeButton->SetHelpText(LOCTEXT("ShipAutoDockNeededInfo", "You need the Auto Docking technology to dock automatically at stations"));
 				TradeButton->SetDisabled(true);
@@ -883,8 +884,18 @@ void SFlareSpacecraftInfo::UpdateCapabilitiesInfo()
 
 		if (TargetSpacecraft->IsStation() && TargetSpacecraft->IsUnderConstruction())
 		{
-			FText ConstructionInfo = LOCTEXT("ConstructionInfo", "This station is under construction and needs resources to be completed");
-			AddMessage(ConstructionInfo, FFlareStyleSet::GetIcon("Build"), NULL, 0);
+			// Grab from factories for station complex build method
+			UFlareFactory* StationFactory = TargetSpacecraft->GetFactories()[0];
+			if (StationFactory && StationFactory->HasCostReserved())
+			{		
+				FText ConstructionInfo = FText::Format(LOCTEXT("ConstructionInfoWithInputs", "This station is under construction ({0} to completion)"), UFlareGameTools::FormatDate(StationFactory->GetRemainingProductionDuration(), 2));
+				AddMessage(ConstructionInfo, FFlareStyleSet::GetIcon("Build"), NULL, 0);
+			}
+			else
+			{
+				FText ConstructionInfo = LOCTEXT("ConstructionInfo", "This station is under construction and needs resources to be completed");
+				AddMessage(ConstructionInfo, FFlareStyleSet::GetIcon("Build"), NULL, 0);
+			}
 		}
 
 		if (TargetSpacecraft->IsStation())
@@ -1468,6 +1479,14 @@ void SFlareSpacecraftInfo::OnCapture()
 FText SFlareSpacecraftInfo::GetName() const
 {
 //	return FText::FromName(TargetSpacecraftDesc->Identifier);
+
+	if (PC->GetMenuManager()->GetCurrentMenu() == EFlareMenu::MENU_Fleet)
+	{
+		return FText::Format(LOCTEXT("ShipNameFleetMenuFormat", "{0}{1}"),
+		TargetSpacecraft && TargetSpacecraft->GetCurrentFleet()->GetFleetSlowestShip() == TargetSpacecraft ? LOCTEXT("SlowestShipInfo", "*") : FText(),
+		UFlareGameTools::DisplaySpacecraftName(TargetSpacecraft));
+	}
+
 	return UFlareGameTools::DisplaySpacecraftName(TargetSpacecraft);
 }
 
@@ -1508,12 +1527,12 @@ FSlateColor SFlareSpacecraftInfo::GetTextColor() const
 
 FText SFlareSpacecraftInfo::GetDescription() const
 {
-	// Common text
-	FText DefaultText = LOCTEXT("Default", "UNKNOWN OBJECT");
-
 	// Description builder
 	if (TargetSpacecraftDesc && TargetSpacecraft->IsValidLowLevel())
 	{
+		FText Text = UFlareGameTools::DisplaySpacecraftName(TargetSpacecraft);
+		FString TextAsString = Text.ToString();
+
 		if(TargetSpacecraft && TargetSpacecraft->IsStation())
 		{
 			if (PC->GetMenuManager()->GetCurrentMenu() == EFlareMenu::MENU_WorldEconomy && PC->GetMenuManager()->IsUIOpen())
@@ -1530,11 +1549,16 @@ FText SFlareSpacecraftInfo::GetDescription() const
 		}
 		else
 		{
+			if (TextAsString.Len() >= 24 && PC->GetMenuManager()->GetCurrentMenu() != EFlareMenu::MENU_WorldEconomy)
+			{
+				return FText();
+			}
+
 			return FText::Format(LOCTEXT("DescriptionFormat", "({0})"), TargetSpacecraftDesc->Name);
 		}
 	}
 
-	return DefaultText;
+	return LOCTEXT("Default", "UNKNOWN OBJECT");
 }
 
 FText SFlareSpacecraftInfo::GetCombatValue() const
@@ -1707,15 +1731,8 @@ EVisibility SFlareSpacecraftInfo::GetSpacecraftLocalInfoVisibility() const
 {
 	if (IsValid(TargetSpacecraft))
 	{
-/*
-		bool TradeMenu = false;
-		if (PC->GetMenuManager()->GetCurrentMenu() == EFlareMenu::MENU_Trade && PC->GetMenuManager()->IsUIOpen())
-		{
-			TradeMenu = true;
-		}
-*/
-		UFlareCompany* TargetCompany = TargetSpacecraft->GetCompany(); // && TargetCompany == PC->GetCompany()
-		if (IsValid(TargetCompany) && PC)// && !TradeMenu)
+		UFlareCompany* TargetCompany = TargetSpacecraft->GetCompany();
+		if (IsValid(TargetCompany) && PC)
 		{
 			if (!TargetSpacecraft->IsStation())
 			{

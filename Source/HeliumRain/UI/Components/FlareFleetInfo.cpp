@@ -1001,7 +1001,7 @@ bool SFlareFleetInfo::IsInspectTradeRouteDisabled() const
 
 FText SFlareFleetInfo::GetAutoTradeHintText() const
 {
-	if (!TargetFleet->GetFleetCompany()->IsTechnologyUnlocked("auto-trade"))
+	if (!TargetFleet->GetFleetCompany()->IsTechnologyUnlocked(TargetFleet->GetGame()->GetCacheSystem()->ID_TechAutomatedTrading))
 	{
 		return LOCTEXT("CantAutoTradeNoTech", "The Automated Trading technology is required");
 	}
@@ -1021,7 +1021,7 @@ FText SFlareFleetInfo::GetAutoTradeHintText() const
 
 bool SFlareFleetInfo::IsAutoTradeDisabled() const
 {
-	if (!TargetFleet->GetFleetCompany()->IsTechnologyUnlocked("auto-trade"))
+	if (!TargetFleet->GetFleetCompany()->IsTechnologyUnlocked(TargetFleet->GetGame()->GetCacheSystem()->ID_TechAutomatedTrading))
 	{
 		return true;
 	}

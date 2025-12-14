@@ -613,7 +613,6 @@ void AFlareBomb::OnSpacecraftHit(AFlareSpacecraft* HitSpacecraft, UFlareSpacecra
 	{
 		FLOGV("AFlareBomb::OnSpacecraftHit : salvaging %s for %s", *HitSpacecraft->GetImmatriculation().ToString(), *OwnerCompany->GetCompanyName().ToString());
 
-//		HitSpacecraft->GetParent()->SetHarpooned(OwnerCompany);
 		if (OwnerCompany->StartCapture(HitSpacecraft->GetParent(), false))
 		{
 			if (OwnerCompany == PC->GetCompany())

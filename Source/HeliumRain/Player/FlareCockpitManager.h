@@ -100,6 +100,7 @@ protected:
 
 	// Gameplay data
 	bool                                     IsInCockpit;
+	bool									 IsInMilitaryCockpit;
 	float                                    CockpitHealthLightTimer;
 	float                                    CockpitHealthLightPeriod;
 	float                                    CockpitTargetLightTimer;
@@ -155,5 +156,8 @@ public:
 	
 	UMaterialInstanceDynamic* GetCurrentFrameMaterial();
 
-
+	bool GetIsInMilitaryCockpit() const
+	{
+		return IsInMilitaryCockpit;
+	}
 };

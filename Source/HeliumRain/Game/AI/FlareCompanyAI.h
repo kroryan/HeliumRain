@@ -41,9 +41,6 @@ struct DefenseSector
 	int32 LargeShipArmyCount;
 	int32 SmallShipArmyCount;
 
-//	bool CapturingStation;
-//	bool CapturingShip;
-
 	TArray<bool> CapturingStations;
 	TArray<bool> CapturingShips;
 
@@ -60,6 +57,16 @@ struct DefenseSector
 	}
 };
 
+struct StationBuildingMemory
+{
+	FFlareSpacecraftDescription* StationDescription;
+	UFlareSimulatedSector*		 BestSector;
+	UFlareSimulatedSpacecraft*	 BestStation;
+
+	int32 DaysUntilForget;
+	bool ReadyForNewMemory = true;
+};
+
 UCLASS()
 class HELIUMRAIN_API UFlareCompanyAI : public UObject
 {
@@ -70,6 +77,8 @@ public:
 	/*----------------------------------------------------
 		Public API
 	----------------------------------------------------*/
+
+	void UpdateStationBuildingMemory(StationBuildingMemory* WorkingMemory, FFlareSpacecraftDescription* BestStationDescription, UFlareSimulatedSpacecraft* BestStation, UFlareSimulatedSector* BestSector, bool DecreaseMemoryTimer);
 
 	/** Load the company AI from a save file */
 	virtual void Load(UFlareCompany* ParentCompany, const FFlareCompanyAISave& Data);
@@ -300,7 +309,10 @@ protected:
 	bool									ActiveAIDesireRepairs;
 	TMap<UFlareSimulatedSector*, bool>		CanUpgradeSectors;
 
-	bool									CreatedWorldResourceVariations;
+	int32									DaysUntilNextWorldResourceVariation;
+
+	StationBuildingMemory					TechnologyStationBuildingMemory;
+	StationBuildingMemory					NonTechStationBuildingMemory;
 
 public:
 

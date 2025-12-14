@@ -52,13 +52,19 @@ void UFlareSimulatedSpacecraftWeaponsSystem::Initialize(UFlareSimulatedSpacecraf
 	WeaponGroupList.Empty();
 	AvailableWeaponDamageTypes.Empty();
 
-	UFlareSpacecraftComponentsCatalog* Catalog = Spacecraft->GetGame()->GetShipPartsCatalog();
+//	UFlareSpacecraftComponentsCatalog* Catalog = Spacecraft->GetGame()->GetShipPartsCatalog();
 
-	for (int32 ComponentIndex = 0; ComponentIndex < Data->Components.Num(); ComponentIndex++)
+	TArray<FFlareSpacecraftComponentSave*> WeaponComponentPointers = Spacecraft->GetWeaponComponentPointers();
+	TArray<FFlareSpacecraftComponentDescription*> WeaponComponentDescriptions = Spacecraft->GetWeaponComponentDescriptions();
+	int32 ComponentsNum = WeaponComponentPointers.Num();
+
+	for (int32 ComponentIndex = 0; ComponentIndex < ComponentsNum; ComponentIndex++)
 	{
-		FFlareSpacecraftComponentSave* ComponentData = &Data->Components[ComponentIndex];
+//		FFlareSpacecraftComponentSave* ComponentData = &Data->Components[ComponentIndex];
+//		FFlareSpacecraftComponentDescription* ComponentDescription = Catalog->Get(ComponentData->ComponentIdentifier);
 
-		FFlareSpacecraftComponentDescription* ComponentDescription = Catalog->Get(ComponentData->ComponentIdentifier);
+		FFlareSpacecraftComponentSave* ComponentData = WeaponComponentPointers[ComponentIndex];
+		FFlareSpacecraftComponentDescription* ComponentDescription = WeaponComponentDescriptions[ComponentIndex]; // Catalog->Get(ComponentData->ComponentIdentifier);
 
 		if(ComponentDescription->Type != EFlarePartType::Weapon)
 		{

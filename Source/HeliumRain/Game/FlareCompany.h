@@ -203,10 +203,6 @@ public:
 	/** Check if company has sector station building license */
 	bool IsSectorStationLicenseUnlocked(FName Identifier) const;
 
-	/** Check current technology multiplier bonus */
-	float GetTechnologyBonus_Float(FName Identifier) const;
-	int32 GetTechnologyBonus_Int(FName Identifier) const;
-
 	/** Check if a technology can be unlocked */
 	bool IsTechnologyAvailable(FName Identifier, FText& Reason, bool IgnoreCost = false, bool IgnoreTechnologyLevel = false) const;
 	bool IsTechnologyAvailable(FFlareTechnologyDescription* Technology, FText& Reason, bool IgnoreCost = false, bool IgnoreTechnologyLevel = false) const;
@@ -313,19 +309,56 @@ protected:
 	TArray<UFlareCompany*>					OtherCompaniesCache;
 	TArray<UFlareSimulatedSpacecraft*>      CompanyCarriers;
 	TMap<FName, UFlareSimulatedSpacecraft*>	CompanySpacecraftsCache;
+	TMap<FName, UFlareSimulatedSpacecraft*>	CompanyDeadSpacecraftsCache;
 	TMap<UFlareSimulatedSector*, int64>		LicenseStationCache;
 
 	mutable struct CompanyValue						CompanyValueCache;
 	mutable bool									CompanyValueCacheValid;
 
-	TMap<FName, float> ResearchBonus_Floats;
-	TMap<FName, int32> ResearchBonus_Ints;
+	bool ThisIsPlayerCompany;
+
+	int32 Technology_TradeRouteSectors;
+	float Technology_RepairBonus;
+	float Technology_DiplomaticPenaltyBonus;
+	float Technology_DiplomaticBonus;
+	float Technology_TravelBonus;
+	float Technology_ShipyardFabBonus;
+
 
 public:
 	/*----------------------------------------------------
 		Getters
 	----------------------------------------------------*/
 
+	int32 GetTechnologyTradeRouteSectors() const
+	{
+		return Technology_TradeRouteSectors;
+	}
+
+	float GetTechnologyRepairBonus() const
+	{
+		return Technology_RepairBonus;
+	}
+
+	float GetTechnologyDiplomaticPenaltyBonus() const
+	{
+		return Technology_DiplomaticPenaltyBonus;
+	}
+
+	float GetTechnologyDiplomaticBonus() const
+	{
+		return Technology_DiplomaticBonus;
+	}
+
+	float GetTechnologyTravelBonus() const
+	{
+		return Technology_TravelBonus;
+	}
+
+	float GetTechnologyShipyardFabBonus() const
+	{
+		return Technology_ShipyardFabBonus;
+	}
 
 	void InvalidateCompanyValueCache()
 	{
@@ -600,4 +633,6 @@ public:
 
 	bool CanTradeWhiteListFrom(UFlareCompany* OtherCompany, FFlareResourceDescription* Resource);
 	bool CanTradeWhiteListTo(UFlareCompany* OtherCompany, FFlareResourceDescription* Resource);
+
+	void SetPlayerCompany(bool NewValue);
 };

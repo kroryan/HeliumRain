@@ -73,13 +73,13 @@ public:
 
 
 	/** Is this ship unable to use orbital engines for inter-sector navigation ? */
-	virtual bool IsStranded() const;
+	virtual bool IsStranded(bool SkipAliveCheck = false) const;
 
 	/** Is this ship unable to manoeuver at all ? */
-	virtual bool IsUncontrollable() const;
+	virtual bool IsUncontrollable(bool SkipAliveCheck = false) const;
 	
 	/** Is this ship unable to fight ? */
-	virtual bool IsDisarmed() const;
+	virtual bool IsDisarmed(bool SkipAliveCheck = false) const;
 
 	/** Is the crew close to death ? */
 	virtual bool IsCrewEndangered() const;

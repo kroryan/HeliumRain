@@ -946,27 +946,11 @@ void UFlareSpacecraftNavigationSystem::BackAwayFromTarget(AActor* MostDangerousC
 	{
 		FVector RelativeOffset;
 
-		if (Spacecraft->GetGame()->GetActiveSector()->GetDescription()->Identifier == "farm" && MostDangerousCandidateActor && MostDangerousCandidateActor->IsA(AFlareCollider::StaticClass()))
-		{
-			RelativeOffset = FVector((-25000) - FMath::RandRange(1, 2) == 1 ? (-100 * (Loops + RecentEscapeAttempts)) : (100 * (Loops + RecentEscapeAttempts)), FMath::RandRange(1, 2) == 1 ? (-5000 - (500 * (Loops + RecentEscapeAttempts))) : (5000 + (500 * (Loops + RecentEscapeAttempts))), FMath::RandRange(1, 2) == 1 ? (-5000 - (500 * (Loops + RecentEscapeAttempts))) : (5000 + (500 * (Loops + RecentEscapeAttempts))));
-			TimeUntilAvoidanceAttempt = 10.f;
-		}
-		else
-		{
-			RelativeOffset = FVector(-5000 - FMath::RandRange(1, 2) == 1 ? (-250 * (Loops + RecentEscapeAttempts)) : (250 * (Loops + RecentEscapeAttempts)), FMath::RandRange(1, 2) == 1 ? (-250 * (Loops + RecentEscapeAttempts)) : (250 * (Loops + RecentEscapeAttempts)), FMath::RandRange(1, 2) == 1 ? (-250 * (Loops + RecentEscapeAttempts)) : (250 * (Loops + RecentEscapeAttempts)));
-		}
-
-		EscapeVector = Spacecraft->GetTransform().TransformPosition(RelativeOffset);
-		if (!ConductSafetyLineTrace(EscapeVector, true))
-		{
-			break;
-		}
-
-		++Loops;
-
 		if (Loops >= 10)
 		{
 			RelativeOffset = FVector(FMath::RandRange(1, 2) == 1 ? -50 * Loops : 50 * Loops, FMath::RandRange(1, 2) == 1 ? -50 * Loops : 50 * Loops, FMath::RandRange(1, 2) == 1 ? -50 * Loops : 50 * Loops);
+			EscapeVector = Spacecraft->GetTransform().TransformPosition(RelativeOffset);
+
 			if (!ConductSafetyLineTrace(EscapeVector, true))
 			{
 				break;
@@ -979,11 +963,34 @@ void UFlareSpacecraftNavigationSystem::BackAwayFromTarget(AActor* MostDangerousC
 				break;
 			}
 		}
+		else
+		{
+			if (Spacecraft->GetGame()->GetActiveSector()->GetDescription()->Identifier == "farm" && MostDangerousCandidateActor && MostDangerousCandidateActor->IsA(AFlareCollider::StaticClass()))
+			{
+				RelativeOffset = FVector(FMath::RandRange(1, 2) == 1 ? -25000 - (100 * (Loops + RecentEscapeAttempts)) : -25000 + (100 * (Loops + RecentEscapeAttempts)), FMath::RandRange(1, 2) == 1 ? (-5000 - (500 * (Loops + RecentEscapeAttempts))) : (5000 + (500 * (Loops + RecentEscapeAttempts))), FMath::RandRange(1, 2) == 1 ? (-5000 - (500 * (Loops + RecentEscapeAttempts))) : (5000 + (500 * (Loops + RecentEscapeAttempts))));
+				TimeUntilAvoidanceAttempt = 10.f;
+			}
+			else
+			{
+				RelativeOffset = FVector(FMath::RandRange(1, 2) == 1 ? -5000 - (-250 * (Loops + RecentEscapeAttempts)) : -5000 + (250 * (Loops + RecentEscapeAttempts)), FMath::RandRange(1, 2) == 1 ? (-250 * (Loops + RecentEscapeAttempts)) : (250 * (Loops + RecentEscapeAttempts)), FMath::RandRange(1, 2) == 1 ? (-250 * (Loops + RecentEscapeAttempts)) : (250 * (Loops + RecentEscapeAttempts)));
+			}
+
+			EscapeVector = Spacecraft->GetTransform().TransformPosition(RelativeOffset);
+
+			if (!ConductSafetyLineTrace(EscapeVector, true))
+			{
+				break;
+			}
+
+		}
+
+		++Loops;
+
 	}
 
 	++RecentEscapeAttempts;
 	PushCommandLocation(EscapeVector, false, ActionTarget, false, LOCTEXT("AvoidingFrom", "Avoiding"));
-	if (!HadPreviousCommand)
+	if (HadPreviousCommand)
 	{
 		CommandData.Enqueue(CurrentCommand);
 	}
@@ -995,11 +1002,11 @@ void UFlareSpacecraftNavigationSystem::DockingAutopilot(AFlareSpacecraft* DockSt
 
 	if (!DockStation)
 	{
-		// TODO LOG
+		FLOGV("UFlareSpacecraftNavigationSystem::DockingAutopilot: No DockStation. %s DockID %d", *Spacecraft->GetParent()->GetImmatriculation().ToString(), DockId);
 		return;
 	}
-	//FLOG("==============DockingAutopilot==============");
 
+	//FLOG("==============DockingAutopilot==============");
 
 	FFlareDockingInfo StationDockInfo = DockStation->GetDockingSystem()->GetDockInfo(DockId);
 	FFlareDockingParameters DockingParameters = GetDockingParameters(StationDockInfo, FVector::ZeroVector);

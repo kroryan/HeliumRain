@@ -8,6 +8,7 @@
 
 #include "../../Player/FlareMenuManager.h"
 #include "../../Player/FlarePlayerController.h"
+#include "../../UI/Menus/FlareTradeMenu.h"
 
 #define LOCTEXT_NAMESPACE "FlareCargoInfo"
 
@@ -124,12 +125,13 @@ void SFlareCargoInfo::Construct(const FArguments& InArgs)
 		]
 	];
 
+	UFlareCargoBay* TargetCargoBay = TargetSpacecraft->GetActiveCargoBay();
 	// Initial state of cargo slot
-	if (TargetSpacecraft->GetActiveCargoBay()->GetSlotCount() <= CargoIndex)
+	if (TargetCargoBay->GetSlotCount() <= CargoIndex)
 	{
 		return;
 	}
-	FFlareCargo* Cargo = TargetSpacecraft->GetActiveCargoBay()->GetSlot(CargoIndex);
+	FFlareCargo* Cargo = TargetCargoBay->GetSlot(CargoIndex);
 	FCHECK(Cargo);
 	PermissionButton->SetActive(Cargo->Restriction == EFlareResourceRestriction::Everybody || Cargo->Restriction == EFlareResourceRestriction::BuyersOnly || Cargo->Restriction == EFlareResourceRestriction::SellersOnly);
 
@@ -149,15 +151,15 @@ void SFlareCargoInfo::Construct(const FArguments& InArgs)
 void SFlareCargoInfo::OnMouseEnter(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent)
 {
 	SWidget::OnMouseEnter(MyGeometry, MouseEvent);
-
 	AFlareMenuManager* MenuManager = AFlareMenuManager::GetSingleton();
 
-	if (TargetSpacecraft->GetActiveCargoBay()->GetSlotCount() <= CargoIndex)
+	UFlareCargoBay* TargetCargoBay = TargetSpacecraft->GetActiveCargoBay();
+	if (TargetCargoBay->GetSlotCount() <= CargoIndex)
 	{
 		return;
 	}
 
-	FFlareCargo* Cargo = TargetSpacecraft->GetActiveCargoBay()->GetSlot(CargoIndex);
+	FFlareCargo* Cargo = TargetCargoBay->GetSlot(CargoIndex);
 	FCHECK(Cargo);
 
 	// Tooltip
@@ -188,12 +190,13 @@ void SFlareCargoInfo::OnMouseLeave(const FPointerEvent& MouseEvent)
 
 const FSlateBrush* SFlareCargoInfo::GetResourceIcon() const
 {
-	if (TargetSpacecraft->GetActiveCargoBay()->GetSlotCount() <= CargoIndex)
+	UFlareCargoBay* TargetCargoBay = TargetSpacecraft->GetActiveCargoBay();
+	if (TargetCargoBay->GetSlotCount() <= CargoIndex)
 	{
 		return NULL;
 	}
 
-	FFlareCargo* Cargo = TargetSpacecraft->GetActiveCargoBay()->GetSlot(CargoIndex);
+	FFlareCargo* Cargo = TargetCargoBay->GetSlot(CargoIndex);
 	FCHECK(Cargo);
 
 	if (Cargo->Resource)
@@ -209,12 +212,14 @@ const FSlateBrush* SFlareCargoInfo::GetResourceIcon() const
 
 FText SFlareCargoInfo::GetResourceAcronym() const
 {
-	if (TargetSpacecraft->GetActiveCargoBay()->GetSlotCount() <= CargoIndex)
+	UFlareCargoBay* TargetCargoBay = TargetSpacecraft->GetActiveCargoBay();
+
+	if (TargetCargoBay->GetSlotCount() <= CargoIndex)
 	{
 		return FText();
 	}
 
-	FFlareCargo* Cargo = TargetSpacecraft->GetActiveCargoBay()->GetSlot(CargoIndex);
+	FFlareCargo* Cargo = TargetCargoBay->GetSlot(CargoIndex);
 	FCHECK(Cargo);
 
 	if (Cargo->Resource)
@@ -229,12 +234,14 @@ FText SFlareCargoInfo::GetResourceAcronym() const
 
 FText SFlareCargoInfo::GetResourceMode() const
 {
-	if (TargetSpacecraft->GetActiveCargoBay()->GetSlotCount() <= CargoIndex)
+	UFlareCargoBay* TargetCargoBay = TargetSpacecraft->GetActiveCargoBay();
+
+	if (TargetCargoBay->GetSlotCount() <= CargoIndex)
 	{
 		return FText();
 	}
 
-	FFlareCargo* Cargo = TargetSpacecraft->GetActiveCargoBay()->GetSlot(CargoIndex);
+	FFlareCargo* Cargo = TargetCargoBay->GetSlot(CargoIndex);
 	FCHECK(Cargo);
 
 	FText LockText;
@@ -250,24 +257,31 @@ FText SFlareCargoInfo::GetResourceMode() const
 	{
 		return LOCTEXT("TradeCargoFormat", "(Trade)");
 	}
+#if !UE_BUILD_SHIPPING
 	else if (Cargo->Lock == EFlareResourceLock::Hidden)
 	{
-		return LOCTEXT("HiddenCargoFormat", "(Overflow)");
+		return LOCTEXT("HiddenCargoFormat", "(Hidden)");
+	}
+#endif
+	else if (Cargo->Lock == EFlareResourceLock::Hidden || Cargo->Lock == EFlareResourceLock::Overflow)
+	{
+		return LOCTEXT("OverflowCargoFormat", "(Overflow)");
 	}
 	return FText();
 }
 
 FText SFlareCargoInfo::GetResourceQuantity() const
 {
-	if (TargetSpacecraft->GetActiveCargoBay()->GetSlotCount() <= CargoIndex)
+	UFlareCargoBay* TargetCargoBay = TargetSpacecraft->GetActiveCargoBay();
+	if (TargetCargoBay->GetSlotCount() <= CargoIndex)
 	{
 		return FText();
 	}
 
-	FFlareCargo* Cargo = TargetSpacecraft->GetActiveCargoBay()->GetSlot(CargoIndex);
+	FFlareCargo* Cargo = TargetCargoBay->GetSlot(CargoIndex);
 	FCHECK(Cargo);
 	// Format the current capacity info
-	int32 Capacity = TargetSpacecraft->GetActiveCargoBay()->GetSlotCapacity();
+	int32 Capacity = TargetCargoBay->GetSlotCapacity();
 
 	// Print IO text if any
 
@@ -298,12 +312,14 @@ FText SFlareCargoInfo::GetResourceQuantity() const
 
 FReply SFlareCargoInfo::OnButtonClicked()
 {
-	if (TargetSpacecraft->GetActiveCargoBay()->GetSlotCount() <= CargoIndex)
+	UFlareCargoBay* TargetCargoBay = TargetSpacecraft->GetActiveCargoBay();
+
+	if (TargetCargoBay->GetSlotCount() <= CargoIndex)
 	{
 		return FReply::Handled();
 	}
 
-	FFlareCargo* Cargo = TargetSpacecraft->GetActiveCargoBay()->GetSlot(CargoIndex);
+	FFlareCargo* Cargo = TargetCargoBay->GetSlot(CargoIndex);
 
 	if (Cargo && Cargo->Resource && Cargo->Quantity > 0)
 	{
@@ -323,23 +339,28 @@ void SFlareCargoInfo::OnDumpClicked()
 void SFlareCargoInfo::OnDumpConfirmed()
 {
 	AFlareMenuManager* MenuManager = AFlareMenuManager::GetSingleton();
-	if (TargetSpacecraft->GetActiveCargoBay()->GetSlotCount() <= CargoIndex)
+	UFlareCargoBay* TargetCargoBay = TargetSpacecraft->GetActiveCargoBay();
+
+	if (TargetCargoBay->GetSlotCount() <= CargoIndex)
 	{
 		return;
 	}
-	FFlareCargo* Cargo = TargetSpacecraft->GetActiveCargoBay()->GetSlot(CargoIndex);
+	FFlareCargo* Cargo = TargetCargoBay->GetSlot(CargoIndex);
 
 	if (Cargo && Cargo->Resource)
 	{
 		MenuManager->GetPC()->ClientPlaySound(MenuManager->GetPC()->GetSoundManager()->DeleteSound);
-		TargetSpacecraft->GetActiveCargoBay()->DumpCargo(Cargo);
+		TargetCargoBay->DumpCargo(Cargo);
 	}
 }
 
 FText SFlareCargoInfo::GetPermissionButtonText() const
 {
 	FText ButtonText;
-	TEnumAsByte<EFlareResourceRestriction::Type> NewSlotRestriction = TargetSpacecraft->GetActiveCargoBay()->GetRestriction(CargoIndex);
+	UFlareCargoBay* TargetCargoBay = TargetSpacecraft->GetActiveCargoBay();
+
+	TEnumAsByte<EFlareResourceRestriction::Type> NewSlotRestriction = TargetCargoBay->GetRestriction(CargoIndex);
+
 	if (NewSlotRestriction == EFlareResourceRestriction::Everybody || NewSlotRestriction == EFlareResourceRestriction::OwnerOnly)
 	{
 		ButtonText = LOCTEXT("PermissionButtonTrade", "Trade");
@@ -366,7 +387,8 @@ FText SFlareCargoInfo::GetPermissionButtonText() const
 
 void SFlareCargoInfo::OnPermissionClicked()
 {
-	TEnumAsByte<EFlareResourceRestriction::Type> NewSlotRestriction = TargetSpacecraft->GetActiveCargoBay()->RotateSlotRestriction(CargoIndex);
+	UFlareCargoBay* TargetCargoBay = TargetSpacecraft->GetActiveCargoBay();
+	TEnumAsByte<EFlareResourceRestriction::Type> NewSlotRestriction = TargetCargoBay->RotateSlotRestriction(CargoIndex);
 	if(NewSlotRestriction == EFlareResourceRestriction::Everybody || NewSlotRestriction == EFlareResourceRestriction::BuyersOnly || NewSlotRestriction == EFlareResourceRestriction::SellersOnly)
 	{
 		PermissionButton->SetActive(true);
@@ -383,9 +405,20 @@ EVisibility SFlareCargoInfo::GetPermissionVisibility() const
 
 	if (IsEnabled() && IsValid(TargetSpacecraft)
 	 && TargetSpacecraft->IsStation()
-	 && TargetSpacecraft->GetCompany() == MenuManager->GetPC()->GetCompany()
-	 && MenuManager->GetCurrentMenu() != EFlareMenu::MENU_Trade)
+	 && TargetSpacecraft->GetCompany() == MenuManager->GetPC()->GetCompany())
 	{
+		if (MenuManager->GetCurrentMenu() == EFlareMenu::MENU_Trade)
+		{
+			UFlareSimulatedSpacecraft* TradeMenuLeftTargetShip = MenuManager->GetTradeMenu()->GetTargetLeftShip();
+			UFlareSimulatedSpacecraft* TradeMenuRightTargetShip = MenuManager->GetTradeMenu()->GetTargetRightShip();
+			if (TradeMenuLeftTargetShip == TargetSpacecraft || TradeMenuRightTargetShip == TargetSpacecraft)
+			{
+				return EVisibility::Visible;
+			}
+			
+			return EVisibility::Collapsed;
+		}
+
 		return EVisibility::Visible;
 	}
 	else
@@ -393,6 +426,5 @@ EVisibility SFlareCargoInfo::GetPermissionVisibility() const
 		return EVisibility::Collapsed;
 	}
 }
-
 
 #undef LOCTEXT_NAMESPACE

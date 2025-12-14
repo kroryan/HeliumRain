@@ -175,10 +175,14 @@ UFlareSimulatedSector* UFlareWorld::LoadSector(const FFlareSectorDescription* De
 
 UFlareTravel* UFlareWorld::LoadTravel(const FFlareTravelSave& TravelData, UFlareFleet* Fleet)
 {
-	UFlareTravel* Travel = NULL;
+	UFlareTravel* Travel = GetGame()->GetCacheSystem()->RetrieveCachedTravel();
 
 	// Create the new travel
-	Travel = NewObject<UFlareTravel>(this, UFlareTravel::StaticClass());
+	if (!Travel)
+	{
+		Travel = NewObject<UFlareTravel>(this, UFlareTravel::StaticClass());
+	}
+
 	if (Travel->Load(TravelData, Fleet))
 	{
 		Travels.AddUnique(Travel);
@@ -188,7 +192,6 @@ UFlareTravel* UFlareWorld::LoadTravel(const FFlareTravelSave& TravelData, UFlare
 
 	return Travel;
 }
-
 
 FFlareWorldSave* UFlareWorld::Save()
 {
@@ -590,6 +593,7 @@ void UFlareWorld::Simulate()
 		for (int32 SpacecraftIndex = 0 ; SpacecraftIndex < Sector->GetSectorSpacecrafts().Num(); SpacecraftIndex++)
 		{
 			UFlareSimulatedSpacecraft* Spacecraft = Sector->GetSectorSpacecrafts()[SpacecraftIndex];
+			Spacecraft->ClearTemporaryCaches();
 
 			if(!Spacecraft->GetDamageSystem()->IsAlive())
 			{
@@ -842,6 +846,8 @@ void UFlareWorld::Simulate()
 	SortedCompanyValues.Sort(&CompanyValueComparator);
 	SortedCompanyCombatValues.Sort(&CompanyTotalCombatValueComparator);
 
+	WorldStats = WorldHelper::ComputeWorldResourceStats(GetGame(), true);
+
 	TArray<UFlareCompany*> CompaniesToSimulateAI = Companies;
 	while(CompaniesToSimulateAI.Num())
 	{
@@ -900,7 +906,6 @@ void UFlareWorld::Simulate()
 		}
 	}
 
-
 	// End trade, intercept, repair and refill, operations
 	for (int CompanyIndex = 0; CompanyIndex < Companies.Num(); CompanyIndex++)
 	{
@@ -922,7 +927,6 @@ void UFlareWorld::Simulate()
 			}
 		}
 	}
-
 
 	int32 PlayerRepairingFleetAfter = 0;
 	int32 PlayerRefillingFleetAfter = 0;
@@ -1216,7 +1220,6 @@ void UFlareWorld::UpdateStorageLocks()
 
 void UFlareWorld::ProcessStolenResearch(UFlareCompany* Capturer, UFlareCompany* Owner, bool StolenFromStation)
 {
-	// TODO research steal techno ?
 	int32 CapturerResearch = Capturer->GetResearchValue();
 	int32 OwnerResearch = Owner->GetResearchValue();
 
@@ -1727,7 +1730,7 @@ TMap<IncomingKey, IncomingValue> UFlareWorld::GetIncomingPlayerEnemy()
 		}
 
 		int64 RemainingDuration = Travel->GetRemainingTravelDuration();
-		if (RemainingDuration > 1 && !PlayerCompany->IsTechnologyUnlocked("early-warning"))
+		if (RemainingDuration > 1 && !PlayerCompany->IsTechnologyUnlocked(GetGame()->GetCacheSystem()->ID_TechEarlyWarning))
 		{
 			continue;
 		}
@@ -1836,7 +1839,7 @@ void UFlareWorld::ProcessIncomingPlayerEnemy()
 			{
 				FText CompanyName = Entry.Key.Company->GetCompanyName();
 
-				if(GetGame()->GetPC()->GetCompany()->IsTechnologyUnlocked("advanced-radar"))
+				if(GetGame()->GetPC()->GetCompany()->IsTechnologyUnlocked(GetGame()->GetCacheSystem()->ID_TechAdvancedRadar))
 				{
 					GetGame()->GetPC()->Notify(LOCTEXT("PlayerAttackedSoon", "Incoming attack"),
 						FText::Format(LOCTEXT("PlayerAttackedSoonFormat", "Your forces in {0} will be attacked tomorrow by {1} with {2} (Combat value: {3}). Prepare for battle."),
@@ -1872,7 +1875,7 @@ void UFlareWorld::ProcessIncomingPlayerEnemy()
 	}
 	else if(!OneDayNotificationHide && OneDayNotificationNeeds > 1)
 	{
-		if(GetGame()->GetPC()->GetCompany()->IsTechnologyUnlocked("advanced-radar"))
+		if(GetGame()->GetPC()->GetCompany()->IsTechnologyUnlocked(GetGame()->GetCacheSystem()->ID_TechAdvancedRadar))
 		{
 			int32 LightShipCount = 0;
 			int32 HeavyShipCount = 0;
@@ -1934,7 +1937,7 @@ void UFlareWorld::ProcessIncomingPlayerEnemy()
 			{
 				FText CompanyName = Entry.Key.Company->GetCompanyName();
 
-				if(GetGame()->GetPC()->GetCompany()->IsTechnologyUnlocked("advanced-radar"))
+				if(GetGame()->GetPC()->GetCompany()->IsTechnologyUnlocked(GetGame()->GetCacheSystem()->ID_TechAdvancedRadar))
 				{
 					FText FirstPart = FText::Format(LOCTEXT("PlayerAttackedDistant1Format", "Your forces in {0} will be attacked in {1} days"),
 							Entry.Key.DestinationSector->GetSectorName(),
@@ -1974,7 +1977,7 @@ void UFlareWorld::ProcessIncomingPlayerEnemy()
 	}
 	else if(!MutipleDaysNotificationHide && MultipleDaysNotificationNeeds > 1)
 	{
-		if(GetGame()->GetPC()->GetCompany()->IsTechnologyUnlocked("advanced-radar"))
+		if(GetGame()->GetPC()->GetCompany()->IsTechnologyUnlocked(GetGame()->GetCacheSystem()->ID_TechAdvancedRadar))
 		{
 			int32 LightShipCount = 0;
 			int32 HeavyShipCount = 0;
@@ -2223,6 +2226,7 @@ UFlareTravel* UFlareWorld::	StartTravel(UFlareFleet* TravelingFleet, UFlareSimul
 
 void UFlareWorld::DeleteTravel(UFlareTravel* Travel)
 {
+	GetGame()->GetCacheSystem()->StoreCachedTravel(Travel);
 	Travels.Remove(Travel);
 }
 
@@ -2375,23 +2379,13 @@ UFlareSimulatedSpacecraft* UFlareWorld::FindSpacecraft(FName ShipImmatriculation
 		{
 			return Spacecraft;
 		}
+
 		Spacecraft = Company->FindSpacecraft(ShipImmatriculation, true);
 		if (Spacecraft)
 		{
 			return Spacecraft;
 		}
 	}
-/*
-	// Now check destroyed ships
-	for (UFlareCompany* Company : Companies)
-	{
-		UFlareSimulatedSpacecraft* Spacecraft = Company->FindSpacecraft(ShipImmatriculation, true);
-		if (Spacecraft)
-		{
-			return Spacecraft;
-		}
-	}
-*/
 	return NULL;
 }
 
@@ -2517,14 +2511,14 @@ TArray<FFlareIncomingEvent> UFlareWorld::GetIncomingEvents()
 		int32 EnemyValue = Entry.Value.CombatValue;
 		int64 RemainingDuration = Entry.Key.RemainingDuration;
 
-		if (RemainingDuration <= 1 || PlayerCompany->IsTechnologyUnlocked("early-warning"))
+		if (RemainingDuration <= 1 || PlayerCompany->IsTechnologyUnlocked(GetGame()->GetCacheSystem()->ID_TechEarlyWarning))
 		{
 			FText TravelText;
 			FText TravelPartText = FText::Format(LOCTEXT("ThreatTextTravelPart", "Traveling to {0} ({1} left)"),
 					Sector->GetSectorName(),
 					UFlareGameTools::FormatDate(RemainingDuration, 1));
 
-			if (PlayerCompany->IsTechnologyUnlocked("advanced-radar"))
+			if (PlayerCompany->IsTechnologyUnlocked(GetGame()->GetCacheSystem()->ID_TechAdvancedRadar))
 			{
 
 				TravelText = FText::Format(LOCTEXT("ThreatTextAdvancedFormat", "\u2022 <WarningText>{0} (Combat value of {1})</>\n    <WarningText>{2}</>\n    <WarningText>{3}</>"),
@@ -2598,11 +2592,11 @@ TArray<FFlareIncomingEvent> UFlareWorld::GetIncomingEvents()
 						MeteoriteText,
 						Sector->GetSectorName());
 				}
-				else if (DangerDelay == 1 || PlayerCompany->IsTechnologyUnlocked("early-warning") || !PlayerTarget)
+				else if (DangerDelay == 1 || PlayerCompany->IsTechnologyUnlocked(GetGame()->GetCacheSystem()->ID_TechEarlyWarning) || !PlayerTarget)
 				{
 					FText DelayText = (DangerDelay > 1 ? FText::Format(LOCTEXT("MeteoriteMultipleDaysFormat", "{0} days"), FText::AsNumber(DangerDelay)) : LOCTEXT("OneDay", "1 day"));
 
-					if (PlayerCompany->IsTechnologyUnlocked("advanced-radar"))
+					if (PlayerCompany->IsTechnologyUnlocked(GetGame()->GetCacheSystem()->ID_TechAdvancedRadar))
 					{
 						Event.Text = FText::Format(LOCTEXT("MeteoriteSoonTextFormat", "\u2022 <WarningText>{0} {1} threatening {2} in {3} !</>"),
 							FText::AsNumber(DangerCount),
@@ -2658,7 +2652,6 @@ TArray<FFlareIncomingEvent> UFlareWorld::GetIncomingEvents()
 	}
 
 	// List ship productions
-
 	for (int32 ShipyardIndex = 0; ShipyardIndex < Shipyards.Num(); ShipyardIndex++)
 	{
 		UFlareSimulatedSpacecraft* CompanyStation = Shipyards[ShipyardIndex];
@@ -2738,18 +2731,48 @@ TArray<FFlareIncomingEvent> UFlareWorld::GetIncomingEvents()
 		}
 	}
 
+#if UE_BUILD_SHIPPING
+	TArray<UFlareSimulatedSpacecraft*>& PlayerCompanyStations = PlayerCompany->GetCompanyStations();
+	for (UFlareSimulatedSpacecraft* CompanyStation : PlayerCompanyStations)
+	{
+		if(CompanyStation->IsUnderConstruction())
+		{
+			UFlareFactory* StationFactory = CompanyStation->GetFactories()[0];
+			if (StationFactory && StationFactory->HasCostReserved())
+			{
+				FText ConstructionInfo = FText::Format(LOCTEXT("ConstructionInfoWithInputsEventFormat", "{0} is under construction in {1} ({2} to completion)"), CompanyStation->GetNickName(), CompanyStation->GetCurrentSector()->GetSectorName(), UFlareGameTools::FormatDate(StationFactory->GetRemainingProductionDuration(), 2));
+
+				FFlareIncomingEvent ConstructionEvent;
+				ConstructionEvent.Text = ConstructionInfo;
+				ConstructionEvent.RemainingDuration = StationFactory->GetRemainingProductionDuration();
+				IncomingEvents.Add(ConstructionEvent);
+			}
+		}
+	}
+#endif
+#if !UE_BUILD_SHIPPING
 	for (int32 CompanyIndex = 0; CompanyIndex < Companies.Num(); CompanyIndex++)
 	{
 		TArray<UFlareSimulatedSpacecraft*>& CompanyStations = Companies[CompanyIndex]->GetCompanyStations();
 		for (UFlareSimulatedSpacecraft* CompanyStation : CompanyStations)
 		{
-			if(!CompanyStation->IsShipyard())
+			if (CompanyStation->IsUnderConstruction())
 			{
-				continue;
+				UFlareFactory* StationFactory = CompanyStation->GetFactories()[0];
+				if (StationFactory && StationFactory->HasCostReserved())
+				{
+					FText ConstructionInfo = FText::Format(LOCTEXT("ConstructionInfoWithInputsEventFormat", "{0} is under construction in {1} ({2} to completion)"), CompanyStation->GetNickName(), CompanyStation->GetCurrentSector()->GetSectorName(), UFlareGameTools::FormatDate(StationFactory->GetRemainingProductionDuration(), 2));
+
+					FFlareIncomingEvent ConstructionEvent;
+					ConstructionEvent.Text = ConstructionInfo;
+					ConstructionEvent.RemainingDuration = StationFactory->GetRemainingProductionDuration();
+					IncomingEvents.Add(ConstructionEvent);
+				}
 			}
 		}
 	}
-	
+#endif
+
 	// List of battle
 	for (UFlareSimulatedSector* Sector: GetSectors())
 	{

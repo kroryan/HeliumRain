@@ -246,10 +246,13 @@ void UFlareFactory::Simulate()
 
 void UFlareFactory::TryBeginProduction()
 {
+
+#if !UE_BUILD_SHIPPING
 	if (GetMarginRatio() < 0.f)
 	{
 		FLOGV("WARNING: Margin ratio for %s is : %f", *FactoryDescription->Name.ToString(), GetMarginRatio())
 	}
+#endif
 
 	if (IsNeedProduction() && !HasCostReserved() && HasInputResources() && HasInputMoney())
 	{
@@ -357,7 +360,7 @@ float UFlareFactory::GetResourceInputMultiplier()
 	float TotalResourceMargin = 1;
 	if (IsShipyard())
 	{
-		float ShipyardfabricationBonus = ShipyardfabricationBonus = GetParent()->GetCompany()->GetTechnologyBonus_Float("shipyard-fabrication-bonus");
+		float ShipyardfabricationBonus = ShipyardfabricationBonus = GetParent()->GetCompany()->GetTechnologyShipyardFabBonus();
 		if (ShipyardfabricationBonus)
 		{
 			TotalResourceMargin = FMath::Max(0.10f, TotalResourceMargin - ShipyardfabricationBonus);
@@ -466,23 +469,25 @@ bool UFlareFactory::HasOutputFreeSpace()
 	// First, fill already existing locked slots
 	for (int32 CargoIndex = 0 ; CargoIndex < CargoBay->GetSlotCount() ; CargoIndex++)
 	{
-		if(!CargoBay->CheckRestriction(CargoBay->GetSlot(CargoIndex), Parent->GetCompany(),0,true))
+		FFlareCargo* CargoBaySlot = CargoBay->GetSlot(CargoIndex);
+
+		if(!CargoBay->CheckRestriction(CargoBaySlot, Parent->GetCompany(),0,true))
 		{
-//			continue;
+			continue;
 		}
 
-		if(CargoBay->GetSlot(CargoIndex)->Lock == EFlareResourceLock::NoLock)
+		if(CargoBaySlot->Lock == EFlareResourceLock::NoLock || CargoBaySlot->Lock == EFlareResourceLock::Hidden || CargoBaySlot->Lock == EFlareResourceLock::Overflow)
 		{
-//			continue;
+			continue;
 		}
 
 		for (int32 ResourceIndex = OutputResources.Num() -1 ; ResourceIndex >= 0; ResourceIndex--)
 		{
-			if (&OutputResources[ResourceIndex].Resource->Data == CargoBay->GetSlot(CargoIndex)->Resource)
+			if (&OutputResources[ResourceIndex].Resource->Data == CargoBaySlot->Resource)
 			{
 				// Same resource
 					
-				int32 AvailableCapacity = CargoBay->GetSlotCapacity() - CargoBay->GetSlot(CargoIndex)->Quantity;
+				int32 AvailableCapacity = CargoBay->GetSlotCapacity() - CargoBaySlot->Quantity;
 
 				if (AvailableCapacity > 0)
 				{
@@ -514,12 +519,14 @@ bool UFlareFactory::HasOutputFreeSpace()
 			break;
 		}
 
-		if(CargoBay->GetSlot(CargoIndex)->Lock == EFlareResourceLock::NoLock)
+		FFlareCargo* CargoBaySlot = CargoBay->GetSlot(CargoIndex);
+
+		if(CargoBaySlot->Lock == EFlareResourceLock::NoLock || CargoBaySlot->Lock == EFlareResourceLock::Hidden || CargoBaySlot->Lock == EFlareResourceLock::Overflow)
 		{
 			continue;
 		}
 
-		if (CargoBay->GetSlot(CargoIndex)->Quantity == 0 && CargoBay->GetSlot(CargoIndex)->Resource == NULL)
+		if (CargoBaySlot->Quantity == 0 && CargoBaySlot->Resource == NULL)
 		{
 			// Empty slot, fill it
 			int32 QuantityAfterEfficiency = OutputResources[0].Quantity * FactoryData.FactoryEfficiency;
@@ -549,12 +556,9 @@ void UFlareFactory::BeginProduction()
 	bool AllowDepts = !IsShipyard()
 			|| (GetTargetShipCompany() != NAME_None && GetTargetShipCompany() != Parent->GetCompany()->GetIdentifier());
 
-	if (GetProductionCost() > 0)
+	if(!Parent->GetCompany()->TakeMoney(GetProductionCost(), AllowDepts, FFlareTransactionLogEntry::LogFactoryWages(this)))
 	{
-		if(!Parent->GetCompany()->TakeMoney(GetProductionCost(), AllowDepts, FFlareTransactionLogEntry::LogFactoryWages(this)))
-		{
-			return;
-		}
+		return;
 	}
 
 	float TotalResourceMargin = GetResourceInputMultiplier();
@@ -586,7 +590,6 @@ void UFlareFactory::BeginProduction()
 			continue;
 		}
 
-		// < Resource->Quantity
 		if (!Parent->GetActiveCargoBayFromFactory(this)->TakeResources(&Resource->Resource->Data, ResourceToTake, Parent->GetCompany(), 0, true))
 		{
 			FLOGV("Fail to take %d resource '%s' to %s in %s", Resource->Quantity, *Resource->Resource->Data.Name.ToString(), *Parent->GetImmatriculation().ToString(), *Parent->GetCurrentSector()->GetName());
@@ -750,7 +753,7 @@ FFlareWorldEvent *UFlareFactory::GenerateEvent()
 			return NULL;
 		}
 
-		NextEvent.Date= GetGame()->GetGameWorld()->GetDate() + GetProductionTime(GetCycleData()) - FactoryData.ProductedDuration;
+		NextEvent.Date = GetGame()->GetGameWorld()->GetDate() + GetProductionTime(GetCycleData()) - FactoryData.ProductedDuration;
 		NextEvent.Visibility = EFlareEventVisibility::Silent;
 		return &NextEvent;
 	}

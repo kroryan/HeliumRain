@@ -110,11 +110,13 @@ namespace EFlareResourceLock
 {
 	enum Type
 	{
+		Default, // Filler value
 		NoLock, // The slot is free
 		Input, // The slot accept only sell
 		Output, // The slot accept only buy
 		Trade, // The slot is lock to a resource and accept buy and sell according price threshold
 		Hidden, // The slot is not available yet
+		Overflow // Slot which has overflowed with a specific resource and will only take that specific resource until it zeros out
 	};
 }
 /** Resource restruction type values */
@@ -123,6 +125,7 @@ namespace EFlareResourceRestriction
 {
 	enum Type
 	{
+		Default, // Filler value
 		Everybody, // Everybody can trade with this slot
 		OwnerOnly, // Only the owner can trade with this slot
 		BuyersOnly, // Only potential buyers can trade with this slot
@@ -921,10 +924,13 @@ struct FFlareSpacecraftDescription
 	bool IsMilitaryArmed() const;
 	bool CheckIsNotMilitary() const;
 
-	bool IsComplex() const;
+	bool IsComplex(FName IdentifierCheck);
 	bool IsResearch() const;
 	bool IsTelescope() const;
 	static const FSlateBrush* GetDescriptionIcon(FFlareSpacecraftDescription* Characteristic, bool IsObjective = false);
+
+	bool CheckedIsComplex = false;
+	bool CalculatedIsComplex = false;
 };
 /** Spacecraft save data */
 USTRUCT()

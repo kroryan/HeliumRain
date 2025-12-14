@@ -1,6 +1,6 @@
 #pragma once
 #include "../Economy/FlareResource.h"
-#include "FlareWorld.h"
+//#include "FlareWorld.h"
 
 struct WorldHelper
 {

@@ -107,6 +107,7 @@ void UFlareSimulatedSector::Load(const FFlareSectorDescription* Description, con
 		{
 			SectorShips.Add(Spacecraft);
 		}
+
 		if(!Spacecraft->IsComplexElement())
 		{
 			SectorSpacecrafts.Add(Spacecraft);
@@ -348,12 +349,12 @@ UFlareSimulatedSpacecraft* UFlareSimulatedSector::CreateSpacecraft(FFlareSpacecr
 
 	switch (SpawnLocation)
 	{
-	case 0:
-		ShipData.SpawnMode = EFlareSpawnMode::Spawn;
-		break;
-	case 1:
-		ShipData.SpawnMode = EFlareSpawnMode::Safe;
-		break;
+		case 0:
+			ShipData.SpawnMode = EFlareSpawnMode::Spawn;
+			break;
+		case 1:
+			ShipData.SpawnMode = EFlareSpawnMode::Safe;
+			break;
 	}
 
 	Game->Immatriculate(Company, ShipDescription->Identifier, &ShipData, AttachComplexStationName != NAME_None);
@@ -372,7 +373,6 @@ UFlareSimulatedSpacecraft* UFlareSimulatedSector::CreateSpacecraft(FFlareSpacecr
 	ShipData.AllowExternalOrder = true;
 	ShipData.AllowAutoConstruction = true;
 	ShipData.Level = StartingLevel;
-//	ShipData.HarpoonCompany = NAME_None;
 	ShipData.OwnerShipName = NAME_None;
 	ShipData.DynamicComponentStateIdentifier = FName("idle");
 	ShipData.AttachComplexStationName = AttachComplexStationName;
@@ -679,22 +679,124 @@ FText UFlareSimulatedSector::GetSectorDescription() const
 	return SectorDescription->Description;
 }
 
+//no out reasons, just abort upon finding a false condition
+bool UFlareSimulatedSector::CanBuildStation(FFlareSpacecraftDescription* StationDescription, UFlareCompany* Company, bool IgnoreCost, bool InComplex, bool InComplexSpecial)
+{
+
+	// Station technology
+	if (!Company->IsTechnologyUnlockedStation(StationDescription))
+	{
+		return false;
+	}
+
+	// The sector must be known
+	if (!Company->IsVisitedSector(this))
+	{
+		return false;
+	}
+
+	// The sector has danger
+	if (GetSectorBattleState(Company).HasDanger)
+	{
+		return false;
+	}
+
+	// Too many stations
+	int32 StationCount = Company->GetCompanySectorStationsCount(this, true);
+	if (!InComplex && (StationCount + StationDescription->GetStationSectorSlots()) > Company->GetCompanyMaxStationsForSector(this))
+	{
+		return false;
+	}
+
+	// Too many stations
+	if (!Company->IsPlayerCompany() && GetSectorStations().Num() > AI_MAX_STATION_PER_SECTOR)
+	{
+		return false;
+	}
+
+	// Does it needs sun
+	if (StationDescription->BuildConstraint.Contains(EFlareBuildConstraint::SunExposure) && SectorDescription->IsSolarPoor)
+	{
+		return false;
+	}
+
+	// Does it needs not icy sector
+	if (StationDescription->BuildConstraint.Contains(EFlareBuildConstraint::HideOnIce) && SectorDescription->IsIcy)
+	{
+		return false;
+	}
+
+	// Does it needs icy sector
+	if (StationDescription->BuildConstraint.Contains(EFlareBuildConstraint::HideOnNoIce) && !SectorDescription->IsIcy)
+	{
+		return false;
+	}
+
+	// Does it needs an geostationary orbit ?
+	if (StationDescription->BuildConstraint.Contains(EFlareBuildConstraint::GeostationaryOrbit) && !SectorDescription->IsGeostationary)
+	{
+		return false;
+	}
+
+	// Does it needs an asteroid ?
+	if (StationDescription->BuildConstraint.Contains(EFlareBuildConstraint::FreeAsteroid) && SectorData.AsteroidData.Num() == 0)
+	{
+		return false;
+	}
+
+	if (InComplex)
+	{
+		// No complex
+		if (StationDescription->BuildConstraint.Contains(EFlareBuildConstraint::NoComplex))
+		{
+			return false;
+		}
+
+		// Requires special complex slot
+		else if (StationDescription->BuildConstraint.Contains(EFlareBuildConstraint::SpecialSlotInComplex) && !InComplexSpecial)
+		{
+			return false;
+		}
+	}
+
+	if (!IgnoreCost)
+	{
+		// Check money cost
+		if (Company->GetMoney() < GetStationConstructionFee(StationDescription->CycleCost.ProductionCost, Company))
+		{
+			return false;
+		}
+	}
+
+	if (StationDescription->BuildableCompany.Num() > 0)
+	{
+		//buildable company has something, check if shipyard owning faction is allowed to build this
+		if ((Company == Game->GetPC()->GetCompany() && !StationDescription->BuildableCompany.Contains(FName("PLAYER"))) || !StationDescription->BuildableCompany.Contains(Company->GetDescription()->ShortName))
+		{
+			return false;
+		}
+	}
+
+	return true;
+}
+
+
 bool UFlareSimulatedSector::CanBuildStation(FFlareSpacecraftDescription* StationDescription, UFlareCompany* Company, TArray<FText>& OutReasons,
 	bool IgnoreCost, bool InComplex, bool InComplexSpecial)
 {
 	bool Result = true;
 
-	// The sector must be known
-	if (!Company->IsVisitedSector(this))
-	{
-		OutReasons.Add(LOCTEXT("StationVisitRequired", "You need to visit the sector first"));
-		Result = false;
-	}
-
 	// Station technology
 	if (!Company->IsTechnologyUnlockedStation(StationDescription))
 	{
 		OutReasons.Add(LOCTEXT("StationTechnologyRequired", "You need to unlock station technology first"));
+		Result = false;
+	}
+
+	// The sector must be known
+	if (!Company->IsVisitedSector(this))
+	{
+		OutReasons.Add(LOCTEXT("StationVisitRequired", "You need to visit the sector first"));
 		Result = false;
 	}
 
@@ -710,7 +812,7 @@ bool UFlareSimulatedSector::CanBuildStation(FFlareSpacecraftDescription* Station
 	
 	if (!InComplex && (StationCount + StationDescription->GetStationSectorSlots()) > Company->GetCompanyMaxStationsForSector(this))
 	{
-		if (!Company->IsTechnologyUnlocked("dense-sectors"))
+		if (!Company->IsTechnologyUnlocked(GetGame()->GetCacheSystem()->ID_TechDenseSectors))
 		{
 			OutReasons.Add(LOCTEXT("BuildNeedDenseSectors", "You have too many stations. Unlock 'dense sectors' technology to build more stations"));
 			Result = false;
@@ -987,14 +1089,15 @@ void UFlareSimulatedSector::SimulatePriceVariation(FFlareResourceDescription* Re
 	for (int32 CountIndex = 0 ; CountIndex < SectorStations.Num(); CountIndex++)
 	{
 		UFlareSimulatedSpacecraft* Station = SectorStations[CountIndex];
+		UFlareCargoBay* StationCargoBay = Station->GetActiveCargoBay();
 
-		if(Station->GetActiveCargoBay()->HasRestrictions())
+		if(StationCargoBay->HasRestrictions())
 		{
 			// Not allow station with slot restriction to impact the price
 			continue;
 		}
 
-		float StockRatio = FMath::Clamp((float) Station->GetActiveCargoBay()->GetResourceQuantity(Resource, NULL) / (float) Station->GetActiveCargoBay()->GetSlotCapacity(), 0.f, 1.f);
+		float StockRatio = FMath::Clamp((float)StationCargoBay->GetResourceQuantity(Resource, NULL) / (float)StationCargoBay->GetSlotCapacity(), 0.f, 1.f);
 
 		for (int32 FactoryIndex = 0; FactoryIndex < Station->GetFactories().Num(); FactoryIndex++)
 		{
@@ -1023,7 +1126,7 @@ void UFlareSimulatedSector::SimulatePriceVariation(FFlareResourceDescription* Re
 
 		if(Station->HasCapability(EFlareSpacecraftCapability::Consumer) && Resource->IsConsumerResource)
 		{
-			float Weight = GetPeople()->GetRessourceConsumption(Resource, false);
+			float Weight = GetPeople()->GetResourceConsumption(Resource, false);
 			WantedPriceSum += Weight * (1.f - StockRatio);
 			WantedWeightSum += Weight;
 		}
@@ -1349,10 +1452,13 @@ void UFlareSimulatedSector::CheckSkirmishEndCondition()
 FFlareSectorBattleState UFlareSimulatedSector::GetSectorBattleState(UFlareCompany* Company)
 {
 	SCOPE_CYCLE_COUNTER(STAT_FlareSector_GetSectorBattleState);
-	if (LastSectorBattleStates.Contains(Company))
+
+	FFlareSectorBattleState* FoundBattleState = LastSectorBattleStates.Find(Company);
+	if (FoundBattleState)
 	{
-		return LastSectorBattleStates[Company];
+		return *FoundBattleState;
 	}
+
 	return UpdateSectorBattleState(Company);
 }
 
@@ -1587,6 +1693,7 @@ FFlareSectorBattleState UFlareSimulatedSector::UpdateSectorBattleState(UFlareCom
 		}
 	}
 
+/*
 	if (LastSectorBattleStates.Contains(Company))
 	{
 		LastSectorBattleStates[Company] = BattleState;
@@ -1595,8 +1702,11 @@ FFlareSectorBattleState UFlareSimulatedSector::UpdateSectorBattleState(UFlareCom
 	{
 		LastSectorBattleStates.Add(Company, BattleState);
 	}
+*/
 
-	// Signal Player warstate changed
+	LastSectorBattleStates.Emplace(Company, BattleState);
+
+// Signal Player warstate changed
 	if (Game->GetActiveSector() && Game->GetActiveSector()->GetSimulatedSector() == this && Company == Game->GetPC()->GetCompany())
 	{
 		if (Game->GetQuestManager())
@@ -1796,10 +1906,14 @@ static bool ReserveShipComparator(UFlareSimulatedSpacecraft& Ship1, UFlareSimula
 
 	// TODO sort by fleet order
 
-		// Priority to full ships
-	if(Ship1.GetActiveCargoBay()->GetUsedCargoSpace() != Ship2.GetActiveCargoBay()->GetUsedCargoSpace())
+	// Priority to full ships
+
+	UFlareCargoBay* Cargo1 = Ship1.GetActiveCargoBay();
+	UFlareCargoBay* Cargo2 = Ship2.GetActiveCargoBay();
+
+	if(Cargo1->GetUsedCargoSpace() != Cargo2->GetUsedCargoSpace())
 	{
-		return Ship1.GetActiveCargoBay()->GetUsedCargoSpace() > Ship2.GetActiveCargoBay()->GetUsedCargoSpace();
+		return Cargo1->GetUsedCargoSpace() > Cargo2->GetUsedCargoSpace();
 	}
 
 	return FMath::RandBool();
@@ -1836,7 +1950,7 @@ void UFlareSimulatedSector::ProcessMeteorites()
 										EFlareNotification::NT_Military);
 
 				}
-				else if(Meteorite.DaysBeforeImpact == 1 && !GetGame()->GetPC()->GetCompany()->IsTechnologyUnlocked("early-warning") && PlayerTarget)
+				else if(Meteorite.DaysBeforeImpact == 1 && !GetGame()->GetPC()->GetCompany()->IsTechnologyUnlocked(GetGame()->GetCacheSystem()->ID_TechEarlyWarning) && PlayerTarget)
 				{
 					GetGame()->GetPC()->Notify(LOCTEXT("ImminentMeteoriteDetected", "Meteoroids detected"),
 										FText::Format(LOCTEXT("ImminentMeteoriteDetectedFormat", "A meteoroid group has been detected as potential danger at {0}"), GetSectorName()),
@@ -1856,19 +1970,14 @@ void UFlareSimulatedSector::ProcessMeteorites()
 			UFlareSimulatedSpacecraft* TargetSpacecraft = GetGame()->GetGameWorld()->FindSpacecraft(Meteorite.TargetStation);
 			if(TargetSpacecraft)
 			{
-				UFlareSpacecraftComponentsCatalog* Catalog = Game->GetShipPartsCatalog();
-
 				float Energy = Meteorite.BrokenDamage * Meteorite.LinearVelocity.SizeSquared() * 0.1;
 
 				for (int32 ComponentIndex = 0; ComponentIndex < TargetSpacecraft->GetData().Components.Num(); ComponentIndex++)
 				{
 					FFlareSpacecraftComponentSave* TargetComponent = &TargetSpacecraft->GetData().Components[ComponentIndex];
-
-					FFlareSpacecraftComponentDescription* ComponentDescription = Catalog->Get(TargetComponent->ComponentIdentifier);
+					FFlareSpacecraftComponentDescription* ComponentDescription = TargetSpacecraft->GetAllComponentDescriptions()[ComponentIndex];
 
 					float UsageRatio = TargetSpacecraft->GetDamageSystem()->GetUsableRatio(ComponentDescription, TargetComponent);
-					float DamageRatio = TargetSpacecraft->GetDamageSystem()->GetDamageRatio(ComponentDescription, TargetComponent);
-
 
 					if (ComponentDescription && UsageRatio > 0)
 					{
@@ -2001,7 +2110,7 @@ void UFlareSimulatedSector::GenerateMeteoriteGroup(UFlareSimulatedSpacecraft* Ta
 
 	if(TargetStation->GetCompany() == GetGame()->GetPC()->GetCompany())
 	{
-		if(GetGame()->GetPC()->GetCompany()->IsTechnologyUnlocked("early-warning"))
+		if(GetGame()->GetPC()->GetCompany()->IsTechnologyUnlocked(GetGame()->GetCacheSystem()->ID_TechEarlyWarning))
 		{
 			GetGame()->GetPC()->Notify(LOCTEXT("MeteoriteDetected", "Meteoroid detected"),
 								FText::Format(LOCTEXT("MeteoriteDetectedFormat", "A meteoroid group has been detected as potential danger for one of your stations at {0}"), GetSectorName()),
@@ -2036,9 +2145,10 @@ TMap<FFlareResourceDescription*, int32> UFlareSimulatedSector::DistributeResourc
 	auto FillSpacecraft = [&Resources, &Transactions](UFlareSimulatedSpacecraft* Spacecraft)
 	{
 		TArray<FFlareResourceDescription*> ResourcesToDrop;
+		UFlareCargoBay* SpacecraftCargoBay = Spacecraft->GetActiveCargoBay();
 		for(auto& Resource : Resources)
 		{
-			int32 GivenQuantity = Spacecraft->GetActiveCargoBay()->GiveResources(Resource.Key, Resource.Value, Spacecraft->GetCompany());
+			int32 GivenQuantity = SpacecraftCargoBay->GiveResources(Resource.Key, Resource.Value, Spacecraft->GetCompany());
 
 			Transactions.Add(Transaction(Spacecraft, Resource.Key, GivenQuantity));
 			Resource.Value -= GivenQuantity;
@@ -2057,19 +2167,10 @@ TMap<FFlareResourceDescription*, int32> UFlareSimulatedSector::DistributeResourc
 	
 	for (UFlareSimulatedSpacecraft* Station : TargetCompany->GetCompanySectorStations(this))
 	{
-/*
-	for(UFlareSimulatedSpacecraft* Station : GetSectorStations())
-	{
-		if(Station->GetCompany() != TargetCompany)
-		{
-			continue;
-		}
-*/
 		if(Station == Source)
 		{
 			continue;
 		}
-
 
 		FillSpacecraft(Station);
 	}
@@ -2582,8 +2683,8 @@ int32 UFlareSimulatedSector::GetCompanyCapturePoints(UFlareCompany* Company)
 			CapturePoints += 10;
 		}
 	}
-
-	if (Company->IsTechnologyUnlocked("negociations"))
+	
+	if (Company->IsTechnologyUnlocked(GetGame()->GetCacheSystem()->ID_TechNegociations))
 	{
 		CapturePoints *= 1.5;
 	}

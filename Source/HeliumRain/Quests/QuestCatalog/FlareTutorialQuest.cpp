@@ -1147,7 +1147,7 @@ void UFlareQuestTutorialTechnology::Load(UFlareQuestManager* Parent)
 
 	Cast<UFlareQuestConditionGroup>(TriggerCondition)->AddChildCondition(UFlareQuestConditionQuestSuccessful::Create(this, "tutorial-contracts"));
 
-	int32 AutoPilotResearchCost = GetQuestManager()->GetGame()->GetPC()->GetCompany()->GetTechnologyCostFromID("auto-docking");
+	int32 AutoPilotResearchCost = GetQuestManager()->GetGame()->GetPC()->GetCompany()->GetTechnologyCostFromID(GetQuestManager()->GetGame()->GetCacheSystem()->ID_TechAutoDocking);
 	if (!AutoPilotResearchCost)
 	{
 		AutoPilotResearchCost = 25;
@@ -1325,7 +1325,7 @@ void UFlareQuestTutorialBuildStation::Load(UFlareQuestManager* Parent)
 	QuestDescription = LOCTEXT("TutorialBuildStationDescription","Learn how to build stations.");
 	QuestCategory = EFlareQuestCategory::TUTORIAL;
 
-	int32 AutoPilotResearchCost = GetQuestManager()->GetGame()->GetPC()->GetCompany()->GetTechnologyCostFromID("auto-docking");
+	int32 AutoPilotResearchCost = GetQuestManager()->GetGame()->GetPC()->GetCompany()->GetTechnologyCostFromID(GetQuestManager()->GetGame()->GetCacheSystem()->ID_TechAutoDocking);
 	if (!AutoPilotResearchCost)
 	{
 		AutoPilotResearchCost = 25;
@@ -1469,7 +1469,7 @@ void UFlareQuestTutorialResearchStation::Load(UFlareQuestManager* Parent)
 		FText Description = LOCTEXT("ResearchStationTechnologyDescription","The fastest way to research technology is by building research stations. First, unlock the technology to build research stations.");
 		UFlareQuestStep* Step = UFlareQuestStep::Create(this, "research-station-technology", Description);
 
-		Cast<UFlareQuestConditionGroup>(Step->GetEndCondition())->AddChildCondition(UFlareQuestConditionTutorialUnlockTechnology::Create(this, "science"));
+		Cast<UFlareQuestConditionGroup>(Step->GetEndCondition())->AddChildCondition(UFlareQuestConditionTutorialUnlockTechnology::Create(this, GetQuestManager()->GetGame()->GetCacheSystem()->ID_TechScience));
 		Steps.Add(Step);
 	}
 

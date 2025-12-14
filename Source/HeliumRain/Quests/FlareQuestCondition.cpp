@@ -1729,6 +1729,7 @@ bool UFlareQuestConditionDockAt::IsCompleted()
 	bool InActiveSector = GetGame()->GetActiveSector() && GetGame()->GetActiveSector()->GetSimulatedSector() == TargetStation->GetCurrentSector();
 	if (InActiveSector)
 	{
+		FLOG("UFlareQuestConditionDockAt::IsCompleted In Active Sector");
 		for (AFlareSpacecraft* Ship : TargetStation->GetActive()->GetDockingSystem()->GetDockedShips())
 		{
 			if (Ship->GetCompany() != GetGame()->GetPC()->GetCompany())
@@ -1739,6 +1740,9 @@ bool UFlareQuestConditionDockAt::IsCompleted()
 			// 2 cases:
 			// - no ship restriction
 			// - restricted to a given ship id
+
+			FLOG("UFlareQuestConditionDockAt::IsCompleted Checking ship in dockedships");
+
 			if (CheckShipMeetsCondition(Ship->GetParent()))
 			{
 				return true;
@@ -1748,6 +1752,7 @@ bool UFlareQuestConditionDockAt::IsCompleted()
 	else
 	{
 		UFlareFleet* PlayerFleet = GetGame()->GetPC()->GetPlayerFleet();
+		FLOG("UFlareQuestConditionDockAt::IsCompleted Not Active Sector");
 		if (PlayerFleet->GetCurrentSector() != TargetStation->GetCurrentSector())
 		{
 			for (UFlareSimulatedSpacecraft* Ship : TargetStation->GetCurrentSector()->GetSectorShips())
@@ -1770,8 +1775,14 @@ bool UFlareQuestConditionDockAt::IsCompleted()
 
 bool UFlareQuestConditionDockAt::CheckShipMeetsCondition(UFlareSimulatedSpacecraft* Ship)
 {
+
 	bool ValidShip = false;
-	if (TargetShipMatchId != NAME_None)
+	if (TargetShipMatchId == NAME_None)
+	{
+		// No restriction
+		ValidShip = true;
+	}
+	else
 	{
 		FName ShipName = Quest->GetSaveBundle().GetName(TargetShipMatchId);
 		UFlareSimulatedSpacecraft* TargetShip = GetGame()->GetGameWorld()->FindSpacecraft(ShipName);

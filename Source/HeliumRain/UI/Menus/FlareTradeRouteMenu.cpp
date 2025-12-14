@@ -1007,7 +1007,7 @@ void SFlareTradeRouteMenu::Enter(UFlareTradeRoute* TradeRoute)
 	SetEnabled(true);
 	SetVisibility(EVisibility::Visible);
 
-	int32 Technology_Bonus = MenuManager->GetGame()->GetPC()->GetCompany()->GetTechnologyBonus_Int("traderoute-sectors");
+	int32 Technology_Bonus = MenuManager->GetGame()->GetPC()->GetCompany()->GetTechnologyTradeRouteSectors();
 	MaxSectorsInRoute = DEFAULT_MAX_SECTORS + Technology_Bonus;
 
 	TargetTradeRoute = TradeRoute;

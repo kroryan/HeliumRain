@@ -45,15 +45,13 @@ void UFlareCompany::Load(const FFlareCompanySave& Data)
 	CompanyData = Data;
 	CompanyData.Identifier = FName(*GetName());
 
-	ResearchBonus_Ints.Reserve(1);
-	ResearchBonus_Ints.Add("traderoute-sectors", 0);
-
-	ResearchBonus_Floats.Reserve(5);
-	ResearchBonus_Floats.Add("repair-bonus", 0.f);
-	ResearchBonus_Floats.Add("diplomatic-penaltybonus", 0.f);
-	ResearchBonus_Floats.Add("diplomatic-bonus", 0.f);
-	ResearchBonus_Floats.Add("travel-bonus", 0.f);
-	ResearchBonus_Floats.Add("shipyard-fabrication-bonus", 0.f);
+	ThisIsPlayerCompany = false;
+	int32 Technology_TradeRouteSectors = 0;
+	float Technology_RepairBonus = 0.f;
+	float Technology_DiplomaticPenaltyBonus = 0.f;
+	float Technology_DiplomaticBonus = 0.f;
+	float Technology_TravelBonus = 0.f;
+	float Technology_ShipyardFabBonus = 0.f;
 
 	// Player description ID is -1
 	if (Data.CatalogIdentifier >= 0)
@@ -338,7 +336,7 @@ void UFlareCompany::SimulateAI(bool GlobalWar, int32 TotalReservedResources)
 		int32 CurrentCount = Ship->GetShipChildren().Num();
 		TArray<FFlareResourceDescription*> InputResources;
 		TArray<UFlareFactory*> Shipyards = Ship->GetShipyardFactories();
-
+		UFlareCargoBay* ShipCargoBay = Ship->GetActiveCargoBay();
 		int32 ActiveShipyards = 0;
 
 #ifdef DEBUG_CARRIERBUYING
@@ -355,7 +353,7 @@ void UFlareCompany::SimulateAI(bool GlobalWar, int32 TotalReservedResources)
 			for (int32 ResourceIndex = 0; ResourceIndex < Shipyard->GetInputResourcesCount(); ResourceIndex++)
 			{
 				FFlareResourceDescription* Resource = Shipyard->GetInputResource(ResourceIndex);
-				if(Ship->GetActiveCargoBay()->GetFreeSpaceForResource(Resource,Ship->GetCompany()) > 0)
+				if(ShipCargoBay->GetFreeSpaceForResource(Resource,Ship->GetCompany()) > 0)
 				{
 					InputResources.AddUnique(Resource);
 #ifdef DEBUG_CARRIERBUYING
@@ -404,7 +402,7 @@ void UFlareCompany::SimulateAI(bool GlobalWar, int32 TotalReservedResources)
 			}
 		}
 
-		if (Ship->IsAllowExternalOrder() && ((this == GetGame()->GetPC()->GetCompany() && IsTechnologyUnlocked("auto-trade")) || this != GetGame()->GetPC()->GetCompany()))
+		if (Ship->IsAllowExternalOrder() && ((this == GetGame()->GetPC()->GetCompany() && IsTechnologyUnlocked(GetGame()->GetCacheSystem()->ID_TechAutomatedTrading)) || this != GetGame()->GetPC()->GetCompany()))
 // auto resupply, player needs auto trade technology for it to work, AI Company main method is to "accidently" resupply the carrier, haphazardly with whatever is at hand locally.
 		{
 			UFlareFleet* Fleet = Ship->GetCurrentFleet();
@@ -415,7 +413,7 @@ void UFlareCompany::SimulateAI(bool GlobalWar, int32 TotalReservedResources)
 				{
 					FFlareResourceDescription* LowestResource = NULL;
 					int32 LowestResourceQuantity = 0;
-					int32 MaximumCargoSlotCapacity = Ship->GetActiveCargoBay()->GetSlotCapacity();
+					int32 MaximumCargoSlotCapacity = ShipCargoBay->GetSlotCapacity();
 					FText Unused;
 
 					for (int32 CargoIndex = 0; CargoIndex < InputResources.Num(); CargoIndex++)
@@ -462,7 +460,7 @@ void UFlareCompany::SimulateAI(bool GlobalWar, int32 TotalReservedResources)
 							FLOGV("%s found a local station wanting to sell %s", *Ship->GetImmatriculation().ToString(), *Resource->Identifier.ToString());
 #endif
 
-							int32 TakenResourceSpace = Ship->GetActiveCargoBay()->GetResourceQuantity(Resource, this);
+							int32 TakenResourceSpace = ShipCargoBay->GetResourceQuantity(Resource, this);
 							if ((!LowestResource || TakenResourceSpace < LowestResourceQuantity) && TakenResourceSpace < MaximumCargoSlotCapacity)
 							{
 								LowestResource = Resource;
@@ -500,11 +498,12 @@ void UFlareCompany::SimulateAI(bool GlobalWar, int32 TotalReservedResources)
 								continue;
 							}
 
-							if (BuyingStation->GetActiveCargoBay()->WantSell(LowestResource, this, true))
+							UFlareCargoBay* BuyingStationCargoBay = BuyingStation->GetActiveCargoBay();
+							if (BuyingStationCargoBay->WantSell(LowestResource, this, true))
 							{
-								int32 TakenResourceSpace = Ship->GetActiveCargoBay()->GetResourceQuantity(LowestResource, this);
+								int32 TakenResourceSpace = ShipCargoBay->GetResourceQuantity(LowestResource, this);
 								int32 AvailableResourceSpace = MaximumCargoSlotCapacity - TakenResourceSpace;
-								int32 Stock = BuyingStation->GetActiveCargoBay()->GetResourceQuantity(LowestResource, this);
+								int32 Stock = BuyingStationCargoBay->GetResourceQuantity(LowestResource, this);
 								if (Stock > AvailableResourceSpace)
 								{
 									Stock = AvailableResourceSpace;
@@ -1237,6 +1236,7 @@ UFlareSimulatedSpacecraft* UFlareCompany::LoadSpacecraft(const FFlareSpacecraftS
 		if(Spacecraft->IsDestroyed())
 		{
 			CompanyDestroyedSpacecrafts.AddUnique(Spacecraft);
+			CompanyDeadSpacecraftsCache.Emplace(Spacecraft->GetImmatriculation());
 		}
 		else
 		{
@@ -1274,14 +1274,7 @@ UFlareSimulatedSpacecraft* UFlareCompany::LoadSpacecraft(const FFlareSpacecraftS
 			if (!Spacecraft->IsComplexElement())
 			{
 				CompanySpacecrafts.AddUnique((Spacecraft));
-				if (CompanySpacecraftsCache.Contains(Spacecraft->GetImmatriculation()))
-				{
-					CompanySpacecraftsCache[Spacecraft->GetImmatriculation()]=Spacecraft;
-				}
-				else
-				{
-					CompanySpacecraftsCache.Add(Spacecraft->GetImmatriculation(), Spacecraft);
-				}
+				CompanySpacecraftsCache.Emplace(Spacecraft->GetImmatriculation(), Spacecraft);
 			}
 		}
 	}
@@ -1364,7 +1357,9 @@ void UFlareCompany::DestroySpacecraft(UFlareSimulatedSpacecraft* Spacecraft)
 	GetGame()->GetGameWorld()->ClearFactories(Spacecraft);
 	CompanyAI->DestroySpacecraft(Spacecraft);
 	Spacecraft->SetDestroyed(true);
+
 	CompanyDestroyedSpacecrafts.Add(Spacecraft);
+	CompanyDeadSpacecraftsCache.Emplace(Spacecraft->GetImmatriculation());
 }
 
 void UFlareCompany::DiscoverSector(UFlareSimulatedSector* Sector, bool VisitedSector)
@@ -1526,15 +1521,15 @@ void UFlareCompany::GivePlayerReputation(float Amount, float Max)
 
 		if (Amount < 0)
 		{
-			float TechnologyBonus = this->IsTechnologyUnlocked("diplomacy") ? 0.5f : 1.f;
-			float TechnologyBonusSecondary = GetTechnologyBonus_Float("diplomatic-penaltybonus");
+			float TechnologyBonus = IsTechnologyUnlocked(GetGame()->GetCacheSystem()->ID_TechDiplomacy) ? 0.5f : 1.f;
+			float TechnologyBonusSecondary = GetTechnologyDiplomaticPenaltyBonus();
 			TechnologyBonus -= TechnologyBonusSecondary;
 			Amount *= TechnologyBonus;
 		}
 		else
 		{
 			float TechnologyBonus = 1.f;
-			float TechnologyBonusSecondary = GetTechnologyBonus_Float("diplomatic-bonus");
+			float TechnologyBonusSecondary = GetTechnologyDiplomaticBonus();
 			TechnologyBonus += TechnologyBonusSecondary;
 			Amount *= TechnologyBonus;
 		}
@@ -1545,7 +1540,7 @@ void UFlareCompany::GivePlayerReputation(float Amount, float Max)
 
 void UFlareCompany::GivePlayerReputationToOthers(float Amount)
 {
-	for (UFlareCompany* OtherCompany : this->GetOtherCompanies())
+	for (UFlareCompany* OtherCompany : GetOtherCompanies())
 //	for (int32 CompanyIndex = 0; CompanyIndex < Game->GetGameWorld()->GetCompanies().Num(); CompanyIndex++)
 	{
 //		UFlareCompany* OtherCompany = Game->GetGameWorld()->GetCompanies()[CompanyIndex];
@@ -2331,6 +2326,7 @@ bool UFlareCompany::IsTechnologyUnlockedShip(const FFlareSpacecraftDescription* 
 
 bool UFlareCompany::IsTechnologyUnlockedStation(const FFlareSpacecraftDescription* Description) const
 {
+	UFlareCacheSystem* GameCache = GetGame()->GetCacheSystem();
 	FName Identifier = Description->Identifier;
 	if (Description->RequiredTechnologies.Num() > 0)
 	{
@@ -2347,67 +2343,67 @@ bool UFlareCompany::IsTechnologyUnlockedStation(const FFlareSpacecraftDescriptio
 		return AllTechsUnlocked;
 	}
 
-	else if (Identifier == "station-habitation" ||
-			Identifier == "station-bh-habitation" ||
-			Identifier == "station-by-habitation" ||
-			Identifier == "station-nh-habitation" ||
-			Identifier == "station-tf-habitation" ||
-			Identifier == "station-tf-solar-plant" ||
-			Identifier == "station-outpost" ||
-			Identifier == "station-solar-plant")
+	else if (Identifier == GameCache->ID_StationHabitation ||
+			Identifier == GameCache->ID_StationHabitation_Sub_BH ||
+			Identifier == GameCache->ID_StationHabitation_Sub_BY ||
+			Identifier == GameCache->ID_StationHabitation_Sub_NH ||
+			Identifier == GameCache->ID_StationHabitation_Sub_TF ||
+			Identifier == GameCache->ID_StationSolarPlant ||
+			Identifier == GameCache->ID_StationSolarPlant_Sub_TF ||
+			Identifier == GameCache->ID_StationOutpost)
 	{
-		return IsTechnologyUnlocked("stations");
+		return IsTechnologyUnlocked(GameCache->ID_TechLogistics);
 	}
-	else if(Identifier == "station-ice-mine"||
-			Identifier == "station-silica-mine" ||
-			Identifier == "station-iron-mine")
+	else if(Identifier == GameCache->ID_StationIceMine  ||
+			Identifier == GameCache->ID_StationSilicaMine ||
+			Identifier == GameCache->ID_StationIronMine)
 	{
-		return IsTechnologyUnlocked("mining");
+		return IsTechnologyUnlocked(GameCache->ID_TechMining);
 	}
-	else if(Identifier == "station-carbon-refinery" ||
-			Identifier == "station-farm" ||
-			Identifier == "station-tf-farm" ||
-			Identifier == "station-plastics-refinery")
+	else if(Identifier == GameCache->ID_StationCarbonRefinery ||
+			Identifier == GameCache->ID_StationFarm ||
+			Identifier == GameCache->ID_StationFarm_Sub_TF ||
+			Identifier == GameCache->ID_StationPlasticsRefinery)
 	{
-		return IsTechnologyUnlocked("chemicals");
+		return IsTechnologyUnlocked(GameCache->ID_TechChemicals);
 	}
-	else if(Identifier == "station-ch4-pump"||
-			Identifier == "station-he3-pump" ||
-			Identifier == "station-h2-pump")
+	else if(Identifier == GameCache->ID_StationMethanePump ||
+			Identifier == GameCache->ID_StationHeliumPump ||
+			Identifier == GameCache->ID_StationHydrogenPump)
 	{
-		return IsTechnologyUnlocked("orbital-pumps");
+		return IsTechnologyUnlocked(GameCache->ID_TechOrbitalPumps);
 	}
-	else if(Identifier == "station-steelworks" ||
-			Identifier == "station-tool-factory" ||
-			Identifier == "station-tf-arsenal" ||
-			Identifier == "station-nh-arsenal" ||
-			Identifier == "station-by-arsenal" ||
-			Identifier == "station-bh-arsenal" ||
-			Identifier == "station-arsenal")
+	else if(Identifier == GameCache->ID_StationSteelworks ||
+			Identifier == GameCache->ID_StationToolFactory ||
+			Identifier == GameCache->ID_StationArsenal ||
+			Identifier == GameCache->ID_StationArsenal_Sub_BH ||
+			Identifier == GameCache->ID_StationArsenal_Sub_BY ||
+			Identifier == GameCache->ID_StationArsenal_Sub_NH ||
+			Identifier == GameCache->ID_StationArsenal_Sub_TF)
 	{
-		return IsTechnologyUnlocked("metallurgy");
+		return IsTechnologyUnlocked(GameCache->ID_TechMetallurgy);
 	}
-	else if(Identifier == "station-shipyard" ||
-		Identifier == "station-bh-shipyard" ||
-		Identifier == "station-by-shipyard" ||
-		Identifier == "station-nh-shipyard")
+	else if(Identifier == GameCache->ID_StationShipyard ||
+		Identifier == GameCache->ID_StationShipyard_Sub_BH ||
+		Identifier == GameCache->ID_StationShipyard_Sub_BY ||
+		Identifier == GameCache->ID_StationShipyard_Sub_NH)
 	{
-		return IsTechnologyUnlocked("shipyard-station");
+		return IsTechnologyUnlocked(GameCache->ID_TechShipyard);
 	}
-	else if(Identifier == "station-tokamak" ||
-			Identifier == "station-hub" ||
-			Identifier == "station-tf-hub" ||
-			Identifier == "station-by-hub" ||
-			Identifier == "station-bh-hub" ||
-			Identifier == "station-complex" ||
-			Identifier == "station-foundry")
+	else if(Identifier == GameCache->ID_StationFusion ||
+			Identifier == GameCache->ID_StationHub ||
+			Identifier == GameCache->ID_StationHub_Sub_BH ||
+			Identifier == GameCache->ID_StationHub_Sub_BY ||
+			Identifier == GameCache->ID_StationHub_Sub_TF ||
+			Identifier == GameCache->ID_StationComplex ||
+			Identifier == GameCache->ID_StationFoundry)
 	{
-		return IsTechnologyUnlocked("advanced-stations");
+		return IsTechnologyUnlocked(GameCache->ID_TechAdvancedStations);
 	}
-	else if(Identifier == "station-telescope" ||
-			Identifier == "station-research")
+	else if(Identifier == GameCache->ID_StationTelescope ||
+			Identifier == GameCache->ID_StationResearch)
 	{
-		return IsTechnologyUnlocked("science");
+		return IsTechnologyUnlocked(GameCache->ID_TechScience);
 	}
 
 	if (Description->IsSubstation)
@@ -2464,23 +2460,24 @@ bool UFlareCompany::IsTechnologyUnlockedPart(const FFlareSpacecraftComponentDesc
 		return AllTechsUnlocked;
 	}
 
-	if (Identifier == "weapon-heavy-salvage" ||
-		Identifier == "weapon-light-salvage")
+	UFlareCacheSystem* GameCache = GetGame()->GetCacheSystem();
+	if (Identifier == GameCache->ID_WeaponSalvageLight ||
+		Identifier == GameCache->ID_WeaponSalvageHeavy)
 	{
-		return IsTechnologyUnlocked("pirate-tech");
+		return IsTechnologyUnlocked(GameCache->ID_TechPirateTech);
 	}
 
-	if (Identifier == "weapon-hades" ||
-		Identifier == "weapon-mjolnir")
+	if (Identifier == GameCache->ID_WeaponHades ||
+		Identifier == GameCache->ID_WeaponMjolnir)
 	{
-		return IsTechnologyUnlocked("flak");
+		return IsTechnologyUnlocked(GameCache->ID_TechFlak);
 	}
 
-	if (Identifier == "weapon-wyrm" ||
-		Identifier == "weapon-sparrow" ||
-		Identifier == "weapon-hydra")
+	if (Identifier == GameCache->ID_WeaponWyrm ||
+		Identifier == GameCache->ID_WeaponSparrow ||
+		Identifier == GameCache->ID_WeaponHydra)
 	{
-		return IsTechnologyUnlocked("bombing");
+		return IsTechnologyUnlocked(GameCache->ID_TechBombing);
 	}
 
 	return true;
@@ -2511,34 +2508,9 @@ int32 UFlareCompany::GetTechnologyCostFromID(const FName Identifier) const
 	return 0;
 }
 
-float UFlareCompany::GetTechnologyBonus_Float(FName Identifier) const
-{
-	if (ResearchBonus_Floats.Contains(Identifier))
-	{
-		return ResearchBonus_Floats[Identifier];
-	}
-	return 0;
-}
-
-int32 UFlareCompany::GetTechnologyBonus_Int(FName Identifier) const
-{
-	if (ResearchBonus_Ints.Contains(Identifier))
-	{
-		return ResearchBonus_Ints[Identifier];
-	}
-	return 0;
-}
-
 int32 UFlareCompany::GetTechnologyLevel() const
 {
 	return FMath::Clamp(1 + CompanyData.TechnologyLevel, 1, GetGame()->GetTechnologyCatalog()->GetMaxTechLevel());
-/*
-	// 0 technologies -> Level 1
-	// 1 technologies -> Level 2
-	// 2 technologies -> Level 3
-	// 3 technologies -> Level 4
-	return FMath::Clamp(1 + UnlockedTechnologies.Num(), 1, GetGame()->GetTechnologyCatalog()->GetMaxTechLevel());
-*/
 }
 
 int32 UFlareCompany::GetTechnologyLevelUpgradeCost(int32 IncrementBy)
@@ -2696,7 +2668,7 @@ TArray<UFlareSimulatedSpacecraft*> UFlareCompany::GetCompanySectorComplexes(UFla
 
 int32 UFlareCompany::GetCompanyMaxStationsForSector(UFlareSimulatedSector* Sector)
 {
-	return IsTechnologyUnlocked("dense-sectors") ? Sector->GetMaxStationsPerCompany() : Sector->GetMaxStationsPerCompany() / 2;
+	return IsTechnologyUnlocked(GetGame()->GetCacheSystem()->ID_TechDenseSectors) ? Sector->GetMaxStationsPerCompany() : Sector->GetMaxStationsPerCompany() / 2;
 }
 
 int32 UFlareCompany::GetCompanySectorStationsCount(UFlareSimulatedSector* Sector, bool IncludeCapture)
@@ -2960,12 +2932,12 @@ bool UFlareCompany::UnlockTechnology(FName Identifier, bool FromSave, bool Force
 			UpdateFactoryRequiredTechnologiesState();
 		}
 
-		ResearchBonus_Ints["traderoute-sectors"] += Technology->TradeRouteSteps;
-		ResearchBonus_Floats["repair-bonus"] += Technology->RepairBonus;
-		ResearchBonus_Floats["diplomatic-penaltybonus"] += Technology->DiplomaticPenaltyBonus;
-		ResearchBonus_Floats["diplomatic-bonus"] += Technology->DiplomaticBonus;
-		ResearchBonus_Floats["travel-bonus"] += Technology->TravelBonus;
-		ResearchBonus_Floats["shipyard-fabrication-bonus"] += Technology->ShipyardFabBonus;
+		Technology_TradeRouteSectors		 += Technology->TradeRouteSteps;
+		Technology_RepairBonus				 += Technology->RepairBonus;
+		Technology_DiplomaticPenaltyBonus	 += Technology->DiplomaticPenaltyBonus;
+		Technology_DiplomaticBonus			 += Technology->DiplomaticBonus;
+		Technology_TravelBonus				 += Technology->TravelBonus;
+		Technology_ShipyardFabBonus			 += Technology->ShipyardFabBonus;
 
 		if (!FromSave)
 		{
@@ -2986,7 +2958,7 @@ bool UFlareCompany::UnlockTechnology(FName Identifier, bool FromSave, bool Force
 
 			CompanyData.ResearchSpent += Cost;
 
-			bool IsInstrumentsUnlocked = IsTechnologyUnlocked("instruments");
+			bool IsInstrumentsUnlocked = IsTechnologyUnlocked(GetGame()->GetCacheSystem()->ID_TechInstruments);
 			float CurrentResearchInflation = IsInstrumentsUnlocked ? 1.20 : 1.25;
 
 			CurrentResearchInflation += 0.001f * CompanyData.TechnologyLevel;
@@ -3204,33 +3176,33 @@ const struct CompanyValue UFlareCompany::GetCompanyValue(UFlareSimulatedSector* 
 
 		// Value of the stock
 		{
-		TArray<FFlareCargo>& CargoBaySlots = Spacecraft->GetProductionCargoBay()->GetSlots();
-		for (int CargoIndex = 0; CargoIndex < CargoBaySlots.Num(); CargoIndex++)
-		{
-			FFlareCargo& Cargo = CargoBaySlots[CargoIndex];
-
-			if (!Cargo.Resource)
+			TArray<FFlareCargo>& CargoBaySlots = Spacecraft->GetProductionCargoBay()->GetSlots();
+			for (int CargoIndex = 0; CargoIndex < CargoBaySlots.Num(); CargoIndex++)
 			{
-				continue;
+				FFlareCargo& Cargo = CargoBaySlots[CargoIndex];
+
+				if (!Cargo.Resource)
+				{
+					continue;
+				}
+
+				CompanyValue.StockValue += ReferenceSector->GetResourcePrice(Cargo.Resource, EFlareResourcePriceContext::Default) * Cargo.Quantity;
 			}
-
-			CompanyValue.StockValue += ReferenceSector->GetResourcePrice(Cargo.Resource, EFlareResourcePriceContext::Default) * Cargo.Quantity;
-		}
 		}
 
 		{
-		TArray<FFlareCargo>& CargoBaySlots = Spacecraft->GetConstructionCargoBay()->GetSlots();
-		for (int CargoIndex = 0; CargoIndex < CargoBaySlots.Num(); CargoIndex++)
-		{
-			FFlareCargo& Cargo = CargoBaySlots[CargoIndex];
-
-			if (!Cargo.Resource)
+			TArray<FFlareCargo>& CargoBaySlots = Spacecraft->GetConstructionCargoBay()->GetSlots();
+			for (int CargoIndex = 0; CargoIndex < CargoBaySlots.Num(); CargoIndex++)
 			{
-				continue;
-			}
+				FFlareCargo& Cargo = CargoBaySlots[CargoIndex];
 
-			CompanyValue.StockValue += ReferenceSector->GetResourcePrice(Cargo.Resource, EFlareResourcePriceContext::Default) * Cargo.Quantity;
-		}
+				if (!Cargo.Resource)
+				{
+					continue;
+				}
+
+				CompanyValue.StockValue += ReferenceSector->GetResourcePrice(Cargo.Resource, EFlareResourcePriceContext::Default) * Cargo.Quantity;
+			}
 		}
 
 		// Value of factory stock
@@ -3246,7 +3218,6 @@ const struct CompanyValue UFlareCompany::GetCompanyValue(UFlareSimulatedSector* 
 				{
 					CompanyValue.TotalDailyProductionCost += CycleProductionCost / FactoryDuration;
 				}
-//				CompanyValue.TotalDailyProductionCost += Factory->GetInputResourceDailyProductionInCredits();
 			}
 
 			for (int32 ReservedResourceIndex = 0 ; ReservedResourceIndex < Factory->GetReservedResources().Num(); ReservedResourceIndex++)
@@ -3259,10 +3230,12 @@ const struct CompanyValue UFlareCompany::GetCompanyValue(UFlareSimulatedSector* 
 				{
 					CompanyValue.StockValue += ReferenceSector->GetResourcePrice(Resource, EFlareResourcePriceContext::Default) * Quantity;
 				}
+#if !UE_BUILD_SHIPPING
 				else
 				{
 					FLOGV("WARNING: Invalid reserved resource %s (%d reserved) for %s)", *ResourceIdentifier.ToString(), Quantity, *Spacecraft->GetImmatriculation().ToString())
 				}
+#endif
 			}
 		}
 	}
@@ -3281,22 +3254,20 @@ const struct CompanyValue UFlareCompany::GetCompanyValue(UFlareSimulatedSector* 
 
 UFlareSimulatedSpacecraft* UFlareCompany::FindSpacecraft(FName ShipImmatriculation, bool Destroyed)
 {
-	if (CompanySpacecraftsCache.Contains(ShipImmatriculation))
+	UFlareSimulatedSpacecraft* const* FoundSpacecraftInCache = CompanySpacecraftsCache.Find(ShipImmatriculation);
+	if (FoundSpacecraftInCache)
 	{
-		return CompanySpacecraftsCache[ShipImmatriculation];
+		return *FoundSpacecraftInCache;
 	}
 
 	if (Destroyed)
 	{
-		for (UFlareSimulatedSpacecraft* Spacecraft : CompanyDestroyedSpacecrafts)
+		FoundSpacecraftInCache = CompanyDeadSpacecraftsCache.Find(ShipImmatriculation);
+		if (FoundSpacecraftInCache)
 		{
-			if (Spacecraft->GetImmatriculation() == ShipImmatriculation)
-			{
-				return Spacecraft;
-			}
+			return *FoundSpacecraftInCache;
 		}
 	}
-
 	return NULL;
 }
 
@@ -3330,7 +3301,8 @@ FText UFlareCompany::GetPlayerHostilityText() const
 
 bool UFlareCompany::IsPlayerCompany() const
 {
-	return this == Game->GetPC()->GetCompany();
+	return ThisIsPlayerCompany;
+//	return this == Game->GetPC()->GetCompany();
 }
 
 bool UFlareCompany::WantCapture(UFlareSimulatedSpacecraft const* Station) const
@@ -3406,6 +3378,11 @@ TArray<UFlareSimulatedSector*> UFlareCompany::GetUndiscoveredSectors()
 		}
 	}
 	return Candidates;
+}
+
+void UFlareCompany::SetPlayerCompany(bool NewValue)
+{
+	ThisIsPlayerCompany = NewValue;
 }
 
 #undef LOCTEXT_NAMESPACE

@@ -63,18 +63,12 @@ UFlareTechnologyCatalog::UFlareTechnologyCatalog(const class FObjectInitializer&
 
 FFlareTechnologyDescription* UFlareTechnologyCatalog::Get(FName Identifier) const
 {
-	auto FindByName = [=](const UFlareTechnologyCatalogEntry* Candidate)
+	UFlareTechnologyCatalogEntry* const* EntryPtr = TechnologyCatalogMap.Find(Identifier);
+	if (EntryPtr && *EntryPtr)
 	{
-		return Candidate->Data.Identifier == Identifier;
-	};
-
-	UFlareTechnologyCatalogEntry* const* Entry = TechnologyCatalog.FindByPredicate(FindByName);
-	if (Entry && *Entry)
-	{
-		return &((*Entry)->Data);
+		return &(*EntryPtr)->Data;
 	}
-
-	return NULL;
+	return nullptr;
 }
 
 int UFlareTechnologyCatalog::GetMaxTechLevel() const

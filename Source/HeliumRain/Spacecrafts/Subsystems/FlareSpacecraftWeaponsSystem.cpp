@@ -211,6 +211,7 @@ void UFlareSpacecraftWeaponsSystem::Start()
 			FLOGV("ERROR: Weapon %s has no description", *Weapon->GetName());
 			continue;
 		}
+
 		WeaponList.Add(Weapon);
 		WeaponDescriptionList.Add(Weapon->GetDescription());
 		int32 GroupIndex = GetGroupByWeaponIdentifer(Weapon->GetDescription()->Identifier);

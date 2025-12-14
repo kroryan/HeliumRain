@@ -464,6 +464,10 @@ public:
 	bool CanBuildStation(FFlareSpacecraftDescription* StationDescription, UFlareCompany* Company, TArray<FText>& OutReason,
 		bool IgnoreCost = false, bool InComplex = false, bool InComplexSpecial = false);
 
+	bool CanBuildStation(FFlareSpacecraftDescription* StationDescription, UFlareCompany* Company,
+		bool IgnoreCost = false, bool InComplex = false, bool InComplexSpecial = false);
+
+
 	/** Build a station on this sector */
 	UFlareSimulatedSpacecraft* BuildStation(FFlareSpacecraftDescription* StationDescription, UFlareCompany* Company,
 		FFlareStationSpawnParameters SpawnParameters = FFlareStationSpawnParameters());

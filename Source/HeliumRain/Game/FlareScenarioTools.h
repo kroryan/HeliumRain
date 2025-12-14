@@ -178,45 +178,6 @@ public:
 	FFlareResourceDescription*                 Methane;
 	FFlareResourceDescription*                 FleetSupply;
 
-	// Ships
-	FName                                      ShipSolen;
-	FName                                      ShipOmen;
-	FName                                      ShipGhoul;
-	FName                                      ShipOrca;
-	FName                                      ShipPhalanx;
-
-	FName                                      ShipSphinx;
-	FName                                      ShipThemis;
-	FName                                      ShipAtlas;
-	FName                                      ShipDragon;
-	FName                                      ShipKami;
-	FName                                      ShipInvader;
-	FName                                      ShipLeviathan;
-	FName                                      ShipAnubis;
-
-	// Stations
-	FName                                      StationFarm;
-	FName                                      StationSolarPlant;
-	FName                                      StationHabitation;
-	FName                                      StationIceMine;
-	FName                                      StationIronMine;
-	FName                                      StationSilicaMine;
-	FName                                      StationSteelworks;
-	FName                                      StationToolFactory;
-	FName                                      StationHydrogenPump;
-	FName                                      StationHeliumPump;
-	FName                                      StationMethanePump;
-	FName                                      StationCarbonRefinery;
-	FName                                      StationPlasticsRefinery;
-	FName                                      StationArsenal;
-	FName                                      StationShipyard;
-	FName                                      StationHub;
-	FName                                      StationOutpost;
-	FName									   StationFoundry;
-	FName									   StationFusion;
-	FName									   StationResearch;
-
 	/** Used for finding random sector for a station to go to*/
 	TArray<UFlareSimulatedSector*> GetRandomAllowedSectors(FName StationClass, UFlareCompany* Company) const;
-
 };

@@ -102,7 +102,7 @@ bool UFlareTravel::Load(const FFlareTravelSave& Data, UFlareFleet* NewFleet)
 
 	SectorDescription.Name = LOCTEXT("TravelSectorName", "Traveling ...");
 	SectorDescription.Description = LOCTEXT("TravelSectorDescription", "Travel sector");
-	SectorDescription.Identifier=Fleet->GetIdentifier();
+	SectorDescription.Identifier = Fleet->GetIdentifier();
 	SectorDescription.Phase = 0;
 	SectorDescription.IsIcy = false;
 	SectorDescription.IsGeostationary = false;
@@ -114,7 +114,11 @@ bool UFlareTravel::Load(const FFlareTravelSave& Data, UFlareFleet* NewFleet)
 	SectorDescription.DebrisFieldInfo.MaxDebrisSize = 0;
 	SectorDescription.DebrisFieldInfo.MinDebrisSize = 0;
 
-	TravelSector = NewObject<UFlareSimulatedSector>(this, UFlareSimulatedSector::StaticClass());
+	if (!TravelSector)
+	{
+		TravelSector = NewObject<UFlareSimulatedSector>(this, UFlareSimulatedSector::StaticClass());
+	}
+
 	TravelSector->Load(&SectorDescription, Data.SectorData, OrbitParameters);
 
 	UpdateTravelParameters();
@@ -333,9 +337,10 @@ void UFlareTravel::EndTravel()
 		for (int ShipIndex = 0; ShipIndex < Fleet->GetShips().Num(); ShipIndex++)
 		{
 			UFlareSimulatedSpacecraft* Ship = Fleet->GetShips()[ShipIndex];
-			if (Ship->GetActiveCargoBay()->GetResourceQuantity(Resource, Ship->GetCompany()) > 0)
+			UFlareCargoBay* CargoBay = Ship->GetActiveCargoBay();
+			if (CargoBay->GetResourceQuantity(Resource, Ship->GetCompany()) > 0)
 			{
-				ContaminationFactor += Ship->GetActiveCargoBay()->GetResourceQuantity(Resource, Ship->GetCompany()) / 1000.f;
+				ContaminationFactor += CargoBay->GetResourceQuantity(Resource, Ship->GetCompany()) / 1000.f;
 				//TODO scale bay world stock/flow
 			}
 		}
@@ -411,8 +416,8 @@ void UFlareTravel::EndTravel()
 	}
 
 	// Update game
+	TravelSector->RetireFleet(Fleet);
 	Game->GetGameWorld()->DeleteTravel(this);
-
 }
 
 int64 UFlareTravel::GetElapsedTime()
@@ -552,8 +557,8 @@ int64 UFlareTravel::ComputeTravelDuration(UFlareWorld* World, UFlareSimulatedSec
 
 	if(Company)
 	{
-		float TechnologyBonus = Company->IsTechnologyUnlocked("fast-travel") ? 0.5f : 1.f;
-		float TechnologyBonusSecondary = Company->GetTechnologyBonus_Float("travel-bonus");
+		float TechnologyBonus = Company->IsTechnologyUnlocked(World->GetGame()->GetCacheSystem()->ID_TechFastTravel) ? 0.5f : 1.f;
+		float TechnologyBonusSecondary = Company->GetTechnologyTravelBonus();
 		TechnologyBonus -= TechnologyBonusSecondary;
 		TravelDuration *= TechnologyBonus;
 	}

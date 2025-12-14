@@ -23,6 +23,9 @@ public:
 	//First is what tech level
 	TMap<int32, TArray<FFlareTechnologyDescription*>> TechnologiesByLevel;
 
+	UPROPERTY(EditAnywhere, Category = Content)
+	TMap<FName, UFlareTechnologyCatalogEntry*> TechnologyCatalogMap;
+
 public:
 
 	/*----------------------------------------------------

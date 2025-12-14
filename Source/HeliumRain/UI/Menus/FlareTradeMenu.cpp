@@ -578,9 +578,11 @@ void SFlareTradeMenu::FillTradeBlock(UFlareSimulatedSpacecraft* TargetSpacecraft
 		if (TargetSpacecraft)
 		{
 			// Get slots
-			for (int32 CargoIndex = 0; CargoIndex < TargetSpacecraft->GetActiveCargoBay()->GetSlotCount(); CargoIndex++)
+			UFlareCargoBay* TargetSpacecraftCargoBay = TargetSpacecraft->GetActiveCargoBay();
+			for (int32 CargoIndex = 0; CargoIndex < TargetSpacecraftCargoBay->GetSlotCount(); CargoIndex++)
 			{
-				FFlareCargo* Cargo = TargetSpacecraft->GetActiveCargoBay()->GetSlot(CargoIndex);
+				FFlareCargo* Cargo = TargetSpacecraftCargoBay->GetSlot(CargoIndex);
+
 				if (Cargo->Lock == EFlareResourceLock::Hidden && Cargo->Quantity == 0)
 				{
 					continue;
@@ -1219,14 +1221,6 @@ void SFlareTradeMenu::SelectSpacecraftRight(UFlareSimulatedSpacecraft* Spacecraf
 
 void SFlareTradeMenu::OnDonationToggle()
 {
-	if (DonationButton->IsActive())
-	{
-	}
-
-	else
-	{
-	}
-
 	TransactionQuantity = GetMaxTransactionAmount();
 	QuantitySlider->SetValue(1.0f);
 	QuantityText->SetText(FText::AsNumber(TransactionQuantity));
@@ -1255,13 +1249,15 @@ void SFlareTradeMenu::OnTransferResources(UFlareSimulatedSpacecraft* SourceSpace
 		if (SelectedQuest && SelectedQuest->GetCurrentStep())
 		{
 			auto PlayerShip = (SourceSpacecraft->IsStation() ? DestinationSpacecraft : SourceSpacecraft);
+			UFlareCargoBay* PlayerCargoBay = PlayerShip->GetActiveCargoBay();
+
 			for(UFlareQuestCondition* Condition : SelectedQuest->GetCurrentConditions())
 			{
 				UFlareQuestConditionBuyAtStation* BuyAtStationCondition = Cast<UFlareQuestConditionBuyAtStation>(Condition);
 				if (BuyAtStationCondition && BuyAtStationCondition->GetResource() == Resource && BuyAtStationCondition->GetTargetStation() == TransactionSourceSpacecraft)
 				{
 					int32 MissingQuantity = BuyAtStationCondition->GetTargetQuantity() - BuyAtStationCondition->GetCurrentProgression();				
-					int32 PreferredQuantity = MissingQuantity - PlayerShip->GetActiveCargoBay()->GetResourceQuantity(Resource, PlayerShip->GetCompany());
+					int32 PreferredQuantity = MissingQuantity - PlayerCargoBay->GetResourceQuantity(Resource, PlayerShip->GetCompany());
 
 					if (TransactionDestinationSpacecraft == PlayerShip)
 					{
@@ -1277,7 +1273,7 @@ void SFlareTradeMenu::OnTransferResources(UFlareSimulatedSpacecraft* SourceSpace
 				if (SellAtStationCondition && SellAtStationCondition->GetResource() == Resource && (SellAtStationCondition->GetTargetStation() == TransactionDestinationSpacecraft || DestinationSpacecraft==PlayerShip))
 				{
 					int32 MissingQuantity = SellAtStationCondition->GetTargetQuantity() - SellAtStationCondition->GetCurrentProgression();
-					int32 PreferredQuantity = MissingQuantity - PlayerShip->GetActiveCargoBay()->GetResourceQuantity(Resource, PlayerShip->GetCompany());
+					int32 PreferredQuantity = MissingQuantity - PlayerCargoBay->GetResourceQuantity(Resource, PlayerShip->GetCompany());
 					if (TransactionSourceSpacecraft == PlayerShip)
 					{
 						PreferredQuantity = MissingQuantity;
@@ -1498,7 +1494,7 @@ void SFlareTradeMenu::UpdateLeftShips()
 	for (int32 SpacecraftIndex = 0; SpacecraftIndex < TargetSector->GetSectorShips().Num(); SpacecraftIndex++)
 	{
 		UFlareSimulatedSpacecraft* ShipCandidate = TargetSector->GetSectorShips()[SpacecraftIndex];
-		if (ShipCandidate && ShipCandidate->GetCompany() == CheckingCompany && ShipCandidate->GetActiveCargoBay()->GetSlotCount() > 0)// && !ShipCandidate->IsTrading())
+		if (ShipCandidate && ShipCandidate->GetCompany() == CheckingCompany && ShipCandidate->GetActiveCargoBay()->GetSlotCount() > 0)
 		{
 			LeftShipList->AddShip(ShipCandidate);
 			Addedships++;
@@ -1531,9 +1527,12 @@ void SFlareTradeMenu::UpdateRightShips()
 		{
 
 			bool AddRightShip = true;
-			if (TargetLeftSpacecraft && TargetLeftSpacecraft->IsTrading() && !TargetLeftSpacecraft->IsTradingWith(StationCandidate))
+			if (!CheckIsActiveSector())
 			{
-				AddRightShip = false;
+				if (TargetLeftSpacecraft && TargetLeftSpacecraft->IsTrading() && !TargetLeftSpacecraft->IsTradingWith(StationCandidate))
+				{
+					AddRightShip = false;
+				}
 			}
 
 			if (AddRightShip)
@@ -1645,15 +1644,19 @@ bool SFlareTradeMenu::IsTransactionValid(FText& Reason) const
 		int32 ResourcePrice = TransactionSourceSpacecraft->GetCurrentSector()->GetTransfertResourcePrice(TransactionSourceSpacecraft, TransactionDestinationSpacecraft, TransactionResource);
 		int32 MaxAffordableQuantity =  FMath::Max(int64(0), TransactionDestinationSpacecraft->GetCompany()->GetMoney() / ResourcePrice);
 		int32 ResourceMaxQuantity;
+
+		UFlareCargoBay* TransactionSourceCargoBay = TransactionSourceSpacecraft->GetActiveCargoBay();
+		UFlareCargoBay* TransactionDestinationCargoBay = TransactionDestinationSpacecraft->GetActiveCargoBay();
+
 		if (TransactionDestinationSpacecraft->GetCompany() == TransactionSourceSpacecraft->GetCompany())
 		{
-			ResourceMaxQuantity = FMath::Min(TransactionSourceSpacecraft->GetActiveCargoBay()->GetResourceQuantity(TransactionResource, MenuManager->GetPC()->GetCompany(),0,true),
-			TransactionDestinationSpacecraft->GetActiveCargoBay()->GetFreeSpaceForResource(TransactionResource, MenuManager->GetPC()->GetCompany(),false,0,true));
+			ResourceMaxQuantity = FMath::Min(TransactionSourceCargoBay->GetResourceQuantity(TransactionResource, MenuManager->GetPC()->GetCompany(),0,true),
+				TransactionDestinationCargoBay->GetFreeSpaceForResource(TransactionResource, MenuManager->GetPC()->GetCompany(),false,0,true));
 		}
 		else
 		{
-			ResourceMaxQuantity = FMath::Min(TransactionSourceSpacecraft->GetActiveCargoBay()->GetResourceQuantity(TransactionResource, MenuManager->GetPC()->GetCompany()),
-			TransactionDestinationSpacecraft->GetActiveCargoBay()->GetFreeSpaceForResource(TransactionResource, MenuManager->GetPC()->GetCompany()));
+			ResourceMaxQuantity = FMath::Min(TransactionSourceCargoBay->GetResourceQuantity(TransactionResource, MenuManager->GetPC()->GetCompany()),
+				TransactionDestinationCargoBay->GetFreeSpaceForResource(TransactionResource, MenuManager->GetPC()->GetCompany()));
 		}
 
 		// Cases of failure + reason
@@ -1668,12 +1671,12 @@ bool SFlareTradeMenu::IsTransactionValid(FText& Reason) const
 			return true;
 		}
 
-		else if (!TransactionSourceSpacecraft->GetActiveCargoBay()->WantSell(TransactionResource, MenuManager->GetPC()->GetCompany()))
+		else if (!TransactionSourceCargoBay->WantSell(TransactionResource, MenuManager->GetPC()->GetCompany()))
 		{
 			Reason = LOCTEXT("CantTradeSell", "This resource isn't sold by the seller. Input resources are never sold.");
 			return false;
 		}
-		else if (!TransactionDestinationSpacecraft->GetActiveCargoBay()->WantBuy(TransactionResource, MenuManager->GetPC()->GetCompany()))
+		else if (!TransactionDestinationCargoBay->WantBuy(TransactionResource, MenuManager->GetPC()->GetCompany()))
 		{
 			Reason = LOCTEXT("CantTradeBuy", "This resource isn't bought by the buyer. Output resources are never bought. The buyer needs an empty slot, or one with the matching resource.");
 			return false;
@@ -1739,8 +1742,8 @@ int32 SFlareTradeMenu::GetMaxTransactionAmount() const
 	int32 ResourceMaxQuantity;
 	if (TransactionDestinationSpacecraft->GetCompany() == TransactionSourceSpacecraft->GetCompany())
 	{
-		ResourceMaxQuantity = FMath::Min(TransactionSourceSpacecraft->GetActiveCargoBay()->GetResourceQuantity(TransactionResource, MenuManager->GetPC()->GetCompany(), 0, true),
-			TransactionDestinationSpacecraft->GetActiveCargoBay()->GetFreeSpaceForResource(TransactionResource, MenuManager->GetPC()->GetCompany(),false, 0, true));
+		ResourceMaxQuantity = FMath::Min(TransactionSourceSpacecraft->GetActiveCargoBay()->GetResourceQuantity(TransactionResource, MenuManager->GetPC()->GetCompany(), 0),
+			TransactionDestinationSpacecraft->GetActiveCargoBay()->GetFreeSpaceForResource(TransactionResource, MenuManager->GetPC()->GetCompany(),false, 0)); // true
 	}
 	else
 	{

@@ -185,7 +185,7 @@ void SFlareOrbitalMenu::Construct(const FArguments& InArgs)
 						.HAlign(HAlign_Left)
 						.Padding(Theme.SmallContentPadding)
 						.AutoWidth()
-					[
+						[
 							SAssignNew(ShowEventsButton, SFlareButton)
 							.Width(3)
 							.Text(LOCTEXT("ShowEvents", "Events"))

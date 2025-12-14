@@ -49,7 +49,7 @@ public:
 	void DumpCargo(FFlareCargo* Cargo);
 
 	/* If client is not null, restriction are used*/
-	int32 GiveResources(FFlareResourceDescription* Resource, int32 Quantity, UFlareCompany* Client, uint8 CheckRestrictionContext = 0, bool IgnoresRestrictionNobody = false);
+	int32 GiveResources(FFlareResourceDescription* Resource, int32 Quantity, UFlareCompany* Client, uint8 CheckRestrictionContext = 0, bool IgnoresRestrictionNobody = false, TEnumAsByte<EFlareResourceRestriction::Type> SetRestriction = EFlareResourceRestriction::Default, TEnumAsByte<EFlareResourceLock::Type> SetLock = EFlareResourceLock::Default);
 
 	void UnlockAll(bool IgnoreManualLock = true);
 
@@ -139,4 +139,3 @@ public:
 	static bool SortBySlotType(const FSortableCargoInfo& A, const FSortableCargoInfo& B);
 
 };
-

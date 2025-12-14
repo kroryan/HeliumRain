@@ -108,45 +108,6 @@ void UFlareScenarioTools::Init(UFlareCompany* Company, FFlarePlayerSave* Player)
 	Carbon =     Game->GetResourceCatalog()->Get("carbon");
 	Methane =     Game->GetResourceCatalog()->Get("ch4");
 	FleetSupply =     Game->GetResourceCatalog()->Get("fleet-supply");
-
-	// Ships
-	ShipSolen = "ship-solen";
-	ShipOmen = "ship-omen";
-	ShipGhoul = "ship-ghoul";
-	ShipOrca = "ship-orca";
-	ShipPhalanx = "ship-phalanx";
-
-	ShipSphinx = "ship-sphinx";
-	ShipThemis = "ship-themis";
-	ShipAtlas = "ship-atlas";
-	
-	ShipDragon = "ship-dragon";
-	ShipKami = "ship-kami";
-	ShipInvader = "ship-invader";
-	ShipLeviathan = "ship-leviathan";
-	ShipAnubis = "ship-anubis";
-
-	// Stations
-	StationFarm = "station-farm";
-	StationSolarPlant = "station-solar-plant";
-	StationHabitation = "station-habitation";
-	StationIceMine = "station-ice-mine";
-	StationIronMine = "station-iron-mine";
-	StationSilicaMine = "station-silica-mine";
-	StationSteelworks = "station-steelworks";
-	StationToolFactory = "station-tool-factory";
-	StationHydrogenPump = "station-h2-pump";
-	StationMethanePump = "station-ch4-pump";
-	StationHeliumPump = "station-he3-pump";
-	StationCarbonRefinery = "station-carbon-refinery";
-	StationPlasticsRefinery = "station-plastics-refinery";
-	StationArsenal = "station-arsenal";
-	StationShipyard = "station-shipyard";
-	StationHub = "station-hub";
-	StationOutpost = "station-outpost";
-	StationFoundry = "station-foundry";
-	StationFusion = "station-tokamak";
-	StationResearch = "station-research";
 }
 
 void UFlareScenarioTools::PostLoad()
@@ -173,7 +134,7 @@ void UFlareScenarioTools::GenerateFighterScenario(bool RandomizeStationLocations
 	SetupWorld(RandomizeStationLocations, EconomyIndex);
 
 	GeneratePlayerStartingSectorKnowledge();
-	CreatePlayerShip(FirstLight, "ship-ghoul");
+	CreatePlayerShip(FirstLight, Game->GetCacheSystem()->ID_ShipGhoul);
 	GeneratePlayerStartingResearch();
 }
 
@@ -186,7 +147,7 @@ void UFlareScenarioTools::GenerateFreighterScenario(bool RandomizeStationLocatio
 	SetupWorld(RandomizeStationLocations, EconomyIndex);
 
 	GeneratePlayerStartingSectorKnowledge();
-	CreatePlayerShip(FirstLight, "ship-solen");
+	CreatePlayerShip(FirstLight, Game->GetCacheSystem()->ID_ShipSolen);
 	GeneratePlayerStartingResearch();
 }
 
@@ -246,7 +207,7 @@ void UFlareScenarioTools::GenerateCustomScenario(int32 ScenarioIndex, bool Rando
 	{
 		UnprotectedPlayerCompanyDescription->StartingMoney += DEFAULT_PLAYER_MONEY;
 		GeneratePlayerStartingSectorKnowledge();
-		CreatePlayerShip(FirstLight, "ship-solen");
+		CreatePlayerShip(FirstLight, Game->GetCacheSystem()->ID_ShipSolen);
 		GeneratePlayerStartingResearch();
 	}
 	SetupWorld(RandomizeStationLocations, EconomyIndex);
@@ -267,17 +228,17 @@ void UFlareScenarioTools::GenerateDebugScenario(bool RandomizeStationLocations, 
 	}
 
 	// Add more stuff
-	CreatePlayerShip(MinersHome, "ship-omen");
-	CreatePlayerShip(FrozenRealm, "ship-omen");
+	CreatePlayerShip(MinersHome, Game->GetCacheSystem()->ID_ShipOmen);
+	CreatePlayerShip(FrozenRealm, Game->GetCacheSystem()->ID_ShipOmen);
 
 	FFlareStationSpawnParameters SpawnParameters;
-	CreateStations(StationIceMine, PlayerCompany, ShoreOfIce, 1,1, SpawnParameters, RandomizeStationLocations);
-	CreateStations(StationIceMine, PlayerCompany, MinersHome, 1,1, SpawnParameters, RandomizeStationLocations);
+	CreateStations(Game->GetCacheSystem()->ID_StationIceMine, PlayerCompany, ShoreOfIce, 1,1, SpawnParameters, RandomizeStationLocations);
+	CreateStations(Game->GetCacheSystem()->ID_StationIceMine, PlayerCompany, MinersHome, 1,1, SpawnParameters, RandomizeStationLocations);
 }
 
 void UFlareScenarioTools::GeneratePlayerStartingResearch()
 {
-	int32 AutoPilotCost = PlayerCompany->GetTechnologyCostFromID("auto-docking");
+	int32 AutoPilotCost = PlayerCompany->GetTechnologyCostFromID(Game->GetCacheSystem()->ID_TechAutoDocking);
 
 	if (AutoPilotCost)
 	{
@@ -307,7 +268,7 @@ void UFlareScenarioTools::GeneratePlayerStartingSectorKnowledge()
 
 UFlareSimulatedSpacecraft* UFlareScenarioTools::CreateRecoveryPlayerShip()
 {
-	return CreatePlayerShip(FirstLight, "ship-solen");
+	return CreatePlayerShip(FirstLight, Game->GetCacheSystem()->ID_ShipSolen);
 }
 
 /*----------------------------------------------------
@@ -316,6 +277,8 @@ UFlareSimulatedSpacecraft* UFlareScenarioTools::CreateRecoveryPlayerShip()
 
 void UFlareScenarioTools::SetupWorld(bool RandomizeStationLocations, int32 EconomyIndex)
 {
+	UFlareCacheSystem* GameCache = Game->GetCacheSystem();
+
 	// Setup common stuff
 	SetupAsteroids();
 
@@ -504,84 +467,49 @@ void UFlareScenarioTools::SetupWorld(bool RandomizeStationLocations, int32 Econo
 		}
 	}
 
-	/*
-	//for testing
-	CreateShips(ShipInvader, PlayerCompany, FirstLight, 1);
-	CreateShips(ShipGhoul, PlayerCompany, FirstLight, 40);
-	CreateShips(ShipSolen, PlayerCompany, FirstLight, 30);
-	CreateShips(ShipOrca, MiningSyndicate, FirstLight, 35);
-
-	CreateStations(StationFarm, PlayerCompany, FirstLight, 1, 1, SpawnParameters, RandomizeStationLocations);
-	CreateStations(StationSolarPlant, PlayerCompany, FirstLight, 1, 1, SpawnParameters, RandomizeStationLocations);
-	CreateStations(StationHabitation, PlayerCompany, FirstLight, 1, 1, SpawnParameters, RandomizeStationLocations);
-	CreateStations(StationIceMine, PlayerCompany, FirstLight, 1, 1, SpawnParameters, RandomizeStationLocations);
-	CreateStations(StationIronMine, PlayerCompany, FirstLight, 1, 1, SpawnParameters, RandomizeStationLocations);
-	CreateStations(StationSilicaMine, PlayerCompany, FirstLight, 1, 1, SpawnParameters, RandomizeStationLocations);
-	CreateStations(StationSteelworks, PlayerCompany, FirstLight, 1, 1, SpawnParameters, RandomizeStationLocations);
-	CreateStations(StationToolFactory, PlayerCompany, FirstLight, 1, 1, SpawnParameters, RandomizeStationLocations);
-	CreateStations(StationHydrogenPump, PlayerCompany, FirstLight, 1, 1, SpawnParameters, RandomizeStationLocations);
-	CreateStations(StationMethanePump, PlayerCompany, FirstLight, 1, 1, SpawnParameters, RandomizeStationLocations);
-	CreateStations(StationHeliumPump, PlayerCompany, FirstLight, 1, 1, SpawnParameters, RandomizeStationLocations);
-	CreateStations(StationCarbonRefinery, PlayerCompany, FirstLight, 1, 1, SpawnParameters, RandomizeStationLocations);
-	CreateStations(StationPlasticsRefinery, PlayerCompany, FirstLight, 1, 1, SpawnParameters, RandomizeStationLocations);
-	CreateStations(StationArsenal, PlayerCompany, FirstLight, 1, 1, SpawnParameters, RandomizeStationLocations);
-	CreateStations(StationHub, PlayerCompany, FirstLight, 1, 1, SpawnParameters, RandomizeStationLocations);
-	CreateStations(StationOutpost, PlayerCompany, FirstLight, 1, 1, SpawnParameters, RandomizeStationLocations);
-	CreateStations(StationFoundry, PlayerCompany, FirstLight, 1, 1, SpawnParameters, RandomizeStationLocations);
-	CreateStations(StationFusion, PlayerCompany, FirstLight, 1, 1, SpawnParameters, RandomizeStationLocations);
-	CreateStations(StationResearch, PlayerCompany, FirstLight, 1, 1, SpawnParameters, RandomizeStationLocations);
-	CreateStations(StationShipyard, PlayerCompany, FirstLight, 1, 1, SpawnParameters, RandomizeStationLocations);
-	PlayerCompany->GiveResearch(999999999);
-	PlayerCompany->GiveMoney(99999999999, FFlareTransactionLogEntry::LogInitialMoney());
-	for (int SectorIndex = 0; SectorIndex < World->GetSectors().Num(); SectorIndex++)
-	{
-		PlayerCompany->DiscoverSector(World->GetSectors()[SectorIndex],true);
-	}
-	//for testing
-	*/
 	// Give technology
-	IonLane->UnlockTechnology("stations", false, true, true, false);
-	IonLane->UnlockTechnology("chemicals", false, true, true, false);
+	IonLane->UnlockTechnology(GameCache->ID_TechLogistics, false, true, true, false);
+	IonLane->UnlockTechnology(GameCache->ID_TechChemicals, false, true, true, false);
 
-	MiningSyndicate->UnlockTechnology("stations", false, true, true, false);
-	MiningSyndicate->UnlockTechnology("mining", false, true, true, false);
+	MiningSyndicate->UnlockTechnology(GameCache->ID_TechLogistics, false, true, true, false);
+	MiningSyndicate->UnlockTechnology(GameCache->ID_TechMining, false, true, true, false);
 
-	UnitedFarmsChemicals->UnlockTechnology("stations", false, true, true, false);
-	UnitedFarmsChemicals->UnlockTechnology("orbital-pumps", false, true, true, false);
-	UnitedFarmsChemicals->UnlockTechnology("chemicals", false, true, true, false);
+	UnitedFarmsChemicals->UnlockTechnology(GameCache->ID_TechLogistics, false, true, true, false);
+	UnitedFarmsChemicals->UnlockTechnology(GameCache->ID_TechOrbitalPumps, false, true, true, false);
+	UnitedFarmsChemicals->UnlockTechnology(GameCache->ID_TechChemicals, false, true, true, false);
 	
-	Sunwatch->UnlockTechnology("instruments", false, true, true, false);
-	Sunwatch->UnlockTechnology("stations", false, true, true, false);
-	Sunwatch->UnlockTechnology("metallurgy", false, true, true, false);
+	Sunwatch->UnlockTechnology(GameCache->ID_TechInstruments, false, true, true, false);
+	Sunwatch->UnlockTechnology(GameCache->ID_TechLogistics, false, true, true, false);
+	Sunwatch->UnlockTechnology(GameCache->ID_TechMetallurgy, false, true, true, false);
 
-	NemaHeavyWorks->UnlockTechnology("stations", false, true, true, false);
-	NemaHeavyWorks->UnlockTechnology("metallurgy", false, true, true, false);
-	NemaHeavyWorks->UnlockTechnology("orbital-pumps", false, true, true, false);
+	NemaHeavyWorks->UnlockTechnology(GameCache->ID_TechLogistics, false, true, true, false);
+	NemaHeavyWorks->UnlockTechnology(GameCache->ID_TechMetallurgy, false, true, true, false);
+	NemaHeavyWorks->UnlockTechnology(GameCache->ID_TechOrbitalPumps, false, true, true, false);
 
-	AxisSupplies->UnlockTechnology("stations", false, true, true, false);
-	AxisSupplies->UnlockTechnology("metallurgy", false, true, true, false);
+	AxisSupplies->UnlockTechnology(GameCache->ID_TechLogistics, false, true, true, false);
+	AxisSupplies->UnlockTechnology(GameCache->ID_TechMetallurgy, false, true, true, false);
 
-	HelixFoundries->UnlockTechnology("stations", false, true, true, false);
-	HelixFoundries->UnlockTechnology("metallurgy", false, true, true, false);
+	HelixFoundries->UnlockTechnology(GameCache->ID_TechLogistics, false, true, true, false);
+	HelixFoundries->UnlockTechnology(GameCache->ID_TechMetallurgy, false, true, true, false);
 	
-	GhostWorksShipyards->UnlockTechnology("stations", false, true, true, false);
-	GhostWorksShipyards->UnlockTechnology("mining", false, true, true, false);
-	GhostWorksShipyards->UnlockTechnology("chemicals", false, true, true, false);
-	GhostWorksShipyards->UnlockTechnology("metallurgy", false, true, true, false);
-	GhostWorksShipyards->UnlockTechnology("shipyard-station", false, true, true, false);
+	GhostWorksShipyards->UnlockTechnology(GameCache->ID_TechLogistics, false, true, true, false);
+	GhostWorksShipyards->UnlockTechnology(GameCache->ID_TechMining, false, true, true, false);
+	GhostWorksShipyards->UnlockTechnology(GameCache->ID_TechChemicals, false, true, true, false);
+	GhostWorksShipyards->UnlockTechnology(GameCache->ID_TechMetallurgy, false, true, true, false);
+	GhostWorksShipyards->UnlockTechnology(GameCache->ID_TechShipyard, false, true, true, false);
 	
-	Pirates->UnlockTechnology("pirate-tech", false, true, true, false);
-	Pirates->UnlockTechnology("quick-repair", false, true, true, false);
+	Pirates->UnlockTechnology(GameCache->ID_TechPirateTech, false, true, true, false);
+	Pirates->UnlockTechnology(GameCache->ID_TechQuickRepairs, false, true, true, false);
 
-	BrokenMoon->UnlockTechnology("quick-repair", false, true, true, false);
-	BrokenMoon->UnlockTechnology("stations", false, true, true, false);
+	BrokenMoon->UnlockTechnology(GameCache->ID_TechQuickRepairs, false, true, true, false);
+	BrokenMoon->UnlockTechnology(GameCache->ID_TechLogistics, false, true, true, false);
 
-	InfiniteOrbit->UnlockTechnology("fast-travel", false, true, true, false);
-	InfiniteOrbit->UnlockTechnology("stations", false, true, true, false);
+	InfiniteOrbit->UnlockTechnology(GameCache->ID_TechFastTravel, false, true, true, false);
+	InfiniteOrbit->UnlockTechnology(GameCache->ID_TechLogistics, false, true, true, false);
 
-	Quantalium->UnlockTechnology("stations", false, true, true, false);
-	Quantalium->UnlockTechnology("mining", false, true, true, false);
-	Quantalium->UnlockTechnology("metallurgy", false, true, true, false);
+	Quantalium->UnlockTechnology(GameCache->ID_TechLogistics, false, true, true, false);
+	Quantalium->UnlockTechnology(GameCache->ID_TechMining, false, true, true, false);
+	Quantalium->UnlockTechnology(GameCache->ID_TechMetallurgy, false, true, true, false);
 
 	// Population setup
 	if (BlueHeart)
@@ -611,70 +539,69 @@ void UFlareScenarioTools::SetupWorld(bool RandomizeStationLocations, int32 Econo
 	
 	// The Depths (ice mines)
 	
-	CreateStations(StationIceMine, MiningSyndicate, TheDepths, 4,1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
-	CreateStations(StationIceMine, GhostWorksShipyards, TheDepths, 1,1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
+	CreateStations(GameCache->ID_StationIceMine, MiningSyndicate, TheDepths, 4,1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
+	CreateStations(GameCache->ID_StationIceMine, GhostWorksShipyards, TheDepths, 1,1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
 
 	// Lighthouse (food and power)
-	CreateStations(StationFarm, UnitedFarmsChemicals, Lighthouse, 3, 2 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
-	CreateStations(StationFarm, IonLane, Lighthouse, 1, 2 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
-	CreateStations(StationSolarPlant, Sunwatch, Lighthouse, 3, 3 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
-	CreateStations(StationSolarPlant, IonLane, Lighthouse, 1, 2 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
-	CreateStations(StationResearch, IonLane, Lighthouse, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
+	CreateStations(GameCache->ID_StationFarm, UnitedFarmsChemicals, Lighthouse, 3, 2 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
+	CreateStations(GameCache->ID_StationFarm, IonLane, Lighthouse, 1, 2 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
+	CreateStations(GameCache->ID_StationSolarPlant, Sunwatch, Lighthouse, 3, 3 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
+	CreateStations(GameCache->ID_StationSolarPlant, IonLane, Lighthouse, 1, 2 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
+	CreateStations(GameCache->ID_StationResearch, IonLane, Lighthouse, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
 
 	// Miner's Home (mines)
-	CreateStations(StationHabitation, MiningSyndicate, MinersHome, 1, 2 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
-	CreateStations(StationHabitation, MiningSyndicate, TheDepths, 1, 2 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
+	CreateStations(GameCache->ID_StationHabitation, MiningSyndicate, MinersHome, 1, 2 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
+	CreateStations(GameCache->ID_StationHabitation, MiningSyndicate, TheDepths, 1, 2 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
 
-	CreateStations(StationIronMine, MiningSyndicate, MinersHome, 4, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
-	CreateStations(StationIronMine, MiningSyndicate, MinersHome, 2, 2 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
-	CreateStations(StationSteelworks, NemaHeavyWorks, MinersHome, 2, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
-	CreateStations(StationToolFactory, NemaHeavyWorks, MinersHome, 1, 2 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
+	CreateStations(GameCache->ID_StationIronMine, MiningSyndicate, MinersHome, 4, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
+	CreateStations(GameCache->ID_StationIronMine, MiningSyndicate, MinersHome, 2, 2 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
+	CreateStations(GameCache->ID_StationSteelworks, NemaHeavyWorks, MinersHome, 2, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
+	CreateStations(GameCache->ID_StationToolFactory, NemaHeavyWorks, MinersHome, 1, 2 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
 
 	// The Spire (pumps, refineries)
-	CreateStations(StationMethanePump, UnitedFarmsChemicals, TheSpire, 2, 2 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
-	CreateStations(StationHydrogenPump, NemaHeavyWorks, TheSpire, 3, 2 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
-	CreateStations(StationHeliumPump, IonLane, TheSpire, 1, 2 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
+	CreateStations(GameCache->ID_StationMethanePump, UnitedFarmsChemicals, TheSpire, 2, 2 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
+	CreateStations(GameCache->ID_StationHydrogenPump, NemaHeavyWorks, TheSpire, 3, 2 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
+	CreateStations(GameCache->ID_StationHeliumPump, IonLane, TheSpire, 1, 2 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
 
 	// Blue Shores (refineries)
-	CreateStations(StationHabitation, MiningSyndicate, MinersHome, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
-	CreateStations(StationPlasticsRefinery, NemaHeavyWorks, BlueShores, 1, 2 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
-	CreateStations(StationCarbonRefinery, UnitedFarmsChemicals, BlueShores, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
-	CreateStations(StationToolFactory, NemaHeavyWorks, BlueShores, 1, 2 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
-	CreateStations(StationResearch, Sunwatch, BlueShores, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
+	CreateStations(GameCache->ID_StationHabitation, MiningSyndicate, MinersHome, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
+	CreateStations(GameCache->ID_StationPlasticsRefinery, NemaHeavyWorks, BlueShores, 1, 2 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
+	CreateStations(GameCache->ID_StationCarbonRefinery, UnitedFarmsChemicals, BlueShores, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
+	CreateStations(GameCache->ID_StationToolFactory, NemaHeavyWorks, BlueShores, 1, 2 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
+	CreateStations(GameCache->ID_StationResearch, Sunwatch, BlueShores, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
 
 	// Blue Heart
 	CreateBlueHeart(StationLevelBonus);
-//	CreateStations(StationCarbonRefinery, UnitedFarmsChemicals, BlueHeart, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
-	CreateStations(StationPlasticsRefinery, UnitedFarmsChemicals, BlueHeart, 1, 2 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
+	CreateStations(GameCache->ID_StationPlasticsRefinery, UnitedFarmsChemicals, BlueHeart, 1, 2 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
 
 	// The Farm
 	CreateTheFarm(StationLevelBonus);
 
 	// Anka HFR factory
-	CreateStations(StationSteelworks, HelixFoundries, TheForge, 2, 2 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
-	CreateStations(StationSteelworks, HelixFoundries, TheForge, 2, 2 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
-	CreateStations(StationToolFactory, HelixFoundries, TheForge, 3, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
-	CreateStations(StationHabitation, Sunwatch, TheForge, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
-	CreateStations(StationHabitation, Sunwatch, Crossroads, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
-	CreateStations(StationHabitation, Sunwatch, TheDig, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
+	CreateStations(GameCache->ID_StationSteelworks, HelixFoundries, TheForge, 2, 2 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
+	CreateStations(GameCache->ID_StationSteelworks, HelixFoundries, TheForge, 2, 2 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
+	CreateStations(GameCache->ID_StationToolFactory, HelixFoundries, TheForge, 3, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
+	CreateStations(GameCache->ID_StationHabitation, Sunwatch, TheForge, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
+	CreateStations(GameCache->ID_StationHabitation, Sunwatch, Crossroads, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
+	CreateStations(GameCache->ID_StationHabitation, Sunwatch, TheDig, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
 
 	// Laboratories
-	CreateStations(StationResearch, Quantalium, Crossroads, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
-	CreateStations(StationFoundry, Quantalium, Crossroads, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
+	CreateStations(GameCache->ID_StationResearch, Quantalium, Crossroads, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
+	CreateStations(GameCache->ID_StationFoundry, Quantalium, Crossroads, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
 
 	// Anka bases for Broken Moon
-	CreateStations(StationOutpost, BrokenMoon, Crossroads, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
+	CreateStations(GameCache->ID_StationOutpost, BrokenMoon, Crossroads, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
 	
 	// Night's Home
 	CreateNightsHome(StationLevelBonus);
 	
 	// Hela secondary economy
-	CreateStations(StationArsenal, AxisSupplies, FrozenRealm, 1, 2 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
-	CreateStations(StationFarm, GhostWorksShipyards, FrozenRealm, 2, 2 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
-	CreateStations(StationSolarPlant, GhostWorksShipyards, FrozenRealm, 2, 3 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
-	CreateStations(StationHub, GhostWorksShipyards, FrozenRealm, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
-	CreateStations(StationIceMine, GhostWorksShipyards, ShoreOfIce, 3, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
-	CreateStations(StationIceMine, MiningSyndicate, ShoreOfIce, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
+	CreateStations(GameCache->ID_StationArsenal, AxisSupplies, FrozenRealm, 1, 2 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
+	CreateStations(GameCache->ID_StationFarm, GhostWorksShipyards, FrozenRealm, 2, 2 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
+	CreateStations(GameCache->ID_StationSolarPlant, GhostWorksShipyards, FrozenRealm, 2, 3 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
+	CreateStations(GameCache->ID_StationHub, GhostWorksShipyards, FrozenRealm, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
+	CreateStations(GameCache->ID_StationIceMine, GhostWorksShipyards, ShoreOfIce, 3, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
+	CreateStations(GameCache->ID_StationIceMine, MiningSyndicate, ShoreOfIce, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
 	
 	// Boneyard
 	Pirates->DiscoverSector(Boneyard, true);
@@ -682,155 +609,155 @@ void UFlareScenarioTools::SetupWorld(bool RandomizeStationLocations, int32 Econo
 	Pirates->DiscoverSector(Daedalus, true);
 
 	CreateBoneyard(StationLevelBonus);
-	CreateStations(StationSolarPlant, Pirates, Boneyard, 2, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
+	CreateStations(GameCache->ID_StationSolarPlant, Pirates, Boneyard, 2, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
 	SetupKnownSectors(Pirates);
 
 	// Create hubs
-	CreateStations(StationHub, IonLane, Crossroads, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
-	CreateStations(StationHub, IonLane, TheForge, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
-	CreateStations(StationHub, IonLane, TheSpire, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
-	CreateStations(StationHub, IonLane, Lighthouse, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
-	CreateStations(StationHub, IonLane, BlueHeart, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
-	CreateStations(StationHub, IonLane, MinersHome, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
-	CreateStations(StationHub, IonLane, NightsHome, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
+	CreateStations(GameCache->ID_StationHub, IonLane, Crossroads, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
+	CreateStations(GameCache->ID_StationHub, IonLane, TheForge, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
+	CreateStations(GameCache->ID_StationHub, IonLane, TheSpire, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
+	CreateStations(GameCache->ID_StationHub, IonLane, Lighthouse, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
+	CreateStations(GameCache->ID_StationHub, IonLane, BlueHeart, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
+	CreateStations(GameCache->ID_StationHub, IonLane, MinersHome, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
+	CreateStations(GameCache->ID_StationHub, IonLane, NightsHome, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
 
 	// Create outposts
-	CreateStations(StationOutpost, AxisSupplies, TheDepths, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
-	CreateStations(StationOutpost, AxisSupplies, MinersHome, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
-	CreateStations(StationOutpost, AxisSupplies, Lighthouse, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
-	CreateStations(StationOutpost, AxisSupplies, BlueHeart, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
-	CreateStations(StationOutpost, AxisSupplies, BlueShores, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
-	CreateStations(StationOutpost, AxisSupplies, TheSpire, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
-	CreateStations(StationOutpost, AxisSupplies, TheForge, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
-	CreateStations(StationOutpost, AxisSupplies, Crossroads, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
-	CreateStations(StationOutpost, AxisSupplies, TheDig, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
-	CreateStations(StationOutpost, AxisSupplies, FrozenRealm, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
-	CreateStations(StationOutpost, AxisSupplies, WinterJunction, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
-	CreateStations(StationOutpost, AxisSupplies, Tranquility, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
+	CreateStations(GameCache->ID_StationOutpost, AxisSupplies, TheDepths, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
+	CreateStations(GameCache->ID_StationOutpost, AxisSupplies, MinersHome, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
+	CreateStations(GameCache->ID_StationOutpost, AxisSupplies, Lighthouse, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
+	CreateStations(GameCache->ID_StationOutpost, AxisSupplies, BlueHeart, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
+	CreateStations(GameCache->ID_StationOutpost, AxisSupplies, BlueShores, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
+	CreateStations(GameCache->ID_StationOutpost, AxisSupplies, TheSpire, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
+	CreateStations(GameCache->ID_StationOutpost, AxisSupplies, TheForge, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
+	CreateStations(GameCache->ID_StationOutpost, AxisSupplies, Crossroads, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
+	CreateStations(GameCache->ID_StationOutpost, AxisSupplies, TheDig, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
+	CreateStations(GameCache->ID_StationOutpost, AxisSupplies, FrozenRealm, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
+	CreateStations(GameCache->ID_StationOutpost, AxisSupplies, WinterJunction, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
+	CreateStations(GameCache->ID_StationOutpost, AxisSupplies, Tranquility, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
 
 	// Create cargos
 	// 48 solens (33 vanilla)
-	CreateShips(ShipSolen, AxisSupplies, BlueHeart, 4);
-	CreateShips(ShipSolen, BrokenMoon, Crossroads, 4);
-	CreateShips(ShipSolen, GhostWorksShipyards, NightsHome, 4);
-	CreateShips(ShipSolen, HelixFoundries, TheForge, 4);
-	CreateShips(ShipSolen, InfiniteOrbit, Tranquility, 4);
-	CreateShips(ShipSolen, IonLane, Lighthouse, 4);
-	CreateShips(ShipSolen, MiningSyndicate, MinersHome, 4);
-	CreateShips(ShipSolen, NemaHeavyWorks, MinersHome, 4);
-	CreateShips(ShipSolen, Pirates, Boneyard, 4);
-	CreateShips(ShipSolen, Quantalium, Crossroads, 4);
-	CreateShips(ShipSolen, Sunwatch, Lighthouse, 4);
-	CreateShips(ShipSolen, UnitedFarmsChemicals, TheSpire, 4);
+	CreateShips(GameCache->ID_ShipSolen, AxisSupplies, BlueHeart, 4);
+	CreateShips(GameCache->ID_ShipSolen, BrokenMoon, Crossroads, 4);
+	CreateShips(GameCache->ID_ShipSolen, GhostWorksShipyards, NightsHome, 4);
+	CreateShips(GameCache->ID_ShipSolen, HelixFoundries, TheForge, 4);
+	CreateShips(GameCache->ID_ShipSolen, InfiniteOrbit, Tranquility, 4);
+	CreateShips(GameCache->ID_ShipSolen, IonLane, Lighthouse, 4);
+	CreateShips(GameCache->ID_ShipSolen, MiningSyndicate, MinersHome, 4);
+	CreateShips(GameCache->ID_ShipSolen, NemaHeavyWorks, MinersHome, 4);
+	CreateShips(GameCache->ID_ShipSolen, Pirates, Boneyard, 4);
+	CreateShips(GameCache->ID_ShipSolen, Quantalium, Crossroads, 4);
+	CreateShips(GameCache->ID_ShipSolen, Sunwatch, Lighthouse, 4);
+	CreateShips(GameCache->ID_ShipSolen, UnitedFarmsChemicals, TheSpire, 4);
 	// 10 omens (10 vanilla)
-	CreateShips(ShipOmen, IonLane, MinersHome, 4);
-	CreateShips(ShipOmen, IonLane, FrozenRealm, 1);
-	CreateShips(ShipOmen, UnitedFarmsChemicals, TheSpire, 2);
-	CreateShips(ShipOmen, HelixFoundries, TheForge, 2);
-	CreateShips(ShipOmen, InfiniteOrbit, Tranquility, 1);
+	CreateShips(GameCache->ID_ShipOmen, IonLane, MinersHome, 4);
+	CreateShips(GameCache->ID_ShipOmen, IonLane, FrozenRealm, 1);
+	CreateShips(GameCache->ID_ShipOmen, UnitedFarmsChemicals, TheSpire, 2);
+	CreateShips(GameCache->ID_ShipOmen, HelixFoundries, TheForge, 2);
+	CreateShips(GameCache->ID_ShipOmen, InfiniteOrbit, Tranquility, 1);
 
 	// Create military ships
-	CreateShips(ShipGhoul, IonLane, MinersHome, 2);
+	CreateShips(GameCache->ID_ShipGhoul, IonLane, MinersHome, 2);
 
-	CreateShips(ShipGhoul, MiningSyndicate, MinersHome, 3);
-	CreateShips(ShipOrca, MiningSyndicate, MinersHome, 2);
+	CreateShips(GameCache->ID_ShipGhoul, MiningSyndicate, MinersHome, 3);
+	CreateShips(GameCache->ID_ShipOrca, MiningSyndicate, MinersHome, 2);
 
-	CreateShips(ShipGhoul, NemaHeavyWorks, BlueHeart, 4);
-	CreateShips(ShipInvader, NemaHeavyWorks, BlueHeart, 1);
+	CreateShips(GameCache->ID_ShipGhoul, NemaHeavyWorks, BlueHeart, 4);
+	CreateShips(GameCache->ID_ShipInvader, NemaHeavyWorks, BlueHeart, 1);
 
-	CreateShips(ShipGhoul, HelixFoundries, TheForge, 2);
-	CreateShips(ShipDragon, HelixFoundries, TheForge, 1);
+	CreateShips(GameCache->ID_ShipGhoul, HelixFoundries, TheForge, 2);
+	CreateShips(GameCache->ID_ShipDragon, HelixFoundries, TheForge, 1);
 
-	CreateShips(ShipGhoul, GhostWorksShipyards, NightsHome, 2);
-	CreateShips(ShipInvader, GhostWorksShipyards, NightsHome, 1);
+	CreateShips(GameCache->ID_ShipGhoul, GhostWorksShipyards, NightsHome, 2);
+	CreateShips(GameCache->ID_ShipInvader, GhostWorksShipyards, NightsHome, 1);
 
-	CreateShips(ShipGhoul, Pirates, Boneyard, 5);
-	CreateShips(ShipDragon, Pirates, Boneyard, 1);
-	CreateShips(ShipGhoul, BrokenMoon, Colossus, 2);
+	CreateShips(GameCache->ID_ShipGhoul, Pirates, Boneyard, 5);
+	CreateShips(GameCache->ID_ShipDragon, Pirates, Boneyard, 1);
+	CreateShips(GameCache->ID_ShipGhoul, BrokenMoon, Colossus, 2);
 
 	if (EconomyIndex >= 1) // Developing
 	{
-		CreateStations(StationArsenal, BrokenMoon, Crossroads, 1, 1 + (StationLevelBonus - 1), SpawnParameters, RandomizeStationLocations);
+		CreateStations(GameCache->ID_StationArsenal, BrokenMoon, Crossroads, 1, 1 + (StationLevelBonus - 1), SpawnParameters, RandomizeStationLocations);
 
-		CreateStations(StationHabitation, InfiniteOrbit, BlueHeart, 1, 1 + (StationLevelBonus - 1), SpawnParameters, RandomizeStationLocations);
-		CreateStations(StationSteelworks, NemaHeavyWorks, MinersHome, 1, 1 + (StationLevelBonus - 1), SpawnParameters, RandomizeStationLocations);
-		CreateStations(StationSteelworks, HelixFoundries, TheForge, 1, 1 + (StationLevelBonus - 1), SpawnParameters, RandomizeStationLocations);
-		CreateStations(StationPlasticsRefinery, NemaHeavyWorks, BlueShores, 1, 1 + (StationLevelBonus - 1), SpawnParameters, RandomizeStationLocations);
-		CreateStations(StationPlasticsRefinery, UnitedFarmsChemicals, BlueHeart, 1, 1 + (StationLevelBonus - 1), SpawnParameters, RandomizeStationLocations);
+		CreateStations(GameCache->ID_StationHabitation, InfiniteOrbit, BlueHeart, 1, 1 + (StationLevelBonus - 1), SpawnParameters, RandomizeStationLocations);
+		CreateStations(GameCache->ID_StationSteelworks, NemaHeavyWorks, MinersHome, 1, 1 + (StationLevelBonus - 1), SpawnParameters, RandomizeStationLocations);
+		CreateStations(GameCache->ID_StationSteelworks, HelixFoundries, TheForge, 1, 1 + (StationLevelBonus - 1), SpawnParameters, RandomizeStationLocations);
+		CreateStations(GameCache->ID_StationPlasticsRefinery, NemaHeavyWorks, BlueShores, 1, 1 + (StationLevelBonus - 1), SpawnParameters, RandomizeStationLocations);
+		CreateStations(GameCache->ID_StationPlasticsRefinery, UnitedFarmsChemicals, BlueHeart, 1, 1 + (StationLevelBonus - 1), SpawnParameters, RandomizeStationLocations);
 
-		CreateShips(ShipSolen, AxisSupplies, BlueHeart, 1 * EconomyIndex);
-		CreateShips(ShipSolen, BrokenMoon, Colossus, 1 * EconomyIndex);
-		CreateShips(ShipSolen, GhostWorksShipyards, NightsHome, 1 * EconomyIndex);
-		CreateShips(ShipSolen, HelixFoundries, TheForge, 1 * EconomyIndex);
-		CreateShips(ShipSolen, InfiniteOrbit, Tranquility, 1 * EconomyIndex);
-		CreateShips(ShipSolen, IonLane, Lighthouse, 1 * EconomyIndex);
-		CreateShips(ShipSolen, MiningSyndicate, MinersHome, 1 * EconomyIndex);
-		CreateShips(ShipSolen, NemaHeavyWorks, MinersHome, 1 * EconomyIndex);
-		CreateShips(ShipSolen, Pirates, Boneyard, 1 * EconomyIndex);
-		CreateShips(ShipSolen, Quantalium, Crossroads, 1 * EconomyIndex);
-		CreateShips(ShipSolen, Sunwatch, Lighthouse, 1 * EconomyIndex);
-		CreateShips(ShipSolen, UnitedFarmsChemicals, TheSpire, 1 * EconomyIndex);
+		CreateShips(GameCache->ID_ShipSolen, AxisSupplies, BlueHeart, 1 * EconomyIndex);
+		CreateShips(GameCache->ID_ShipSolen, BrokenMoon, Colossus, 1 * EconomyIndex);
+		CreateShips(GameCache->ID_ShipSolen, GhostWorksShipyards, NightsHome, 1 * EconomyIndex);
+		CreateShips(GameCache->ID_ShipSolen, HelixFoundries, TheForge, 1 * EconomyIndex);
+		CreateShips(GameCache->ID_ShipSolen, InfiniteOrbit, Tranquility, 1 * EconomyIndex);
+		CreateShips(GameCache->ID_ShipSolen, IonLane, Lighthouse, 1 * EconomyIndex);
+		CreateShips(GameCache->ID_ShipSolen, MiningSyndicate, MinersHome, 1 * EconomyIndex);
+		CreateShips(GameCache->ID_ShipSolen, NemaHeavyWorks, MinersHome, 1 * EconomyIndex);
+		CreateShips(GameCache->ID_ShipSolen, Pirates, Boneyard, 1 * EconomyIndex);
+		CreateShips(GameCache->ID_ShipSolen, Quantalium, Crossroads, 1 * EconomyIndex);
+		CreateShips(GameCache->ID_ShipSolen, Sunwatch, Lighthouse, 1 * EconomyIndex);
+		CreateShips(GameCache->ID_ShipSolen, UnitedFarmsChemicals, TheSpire, 1 * EconomyIndex);
 	}
 
 	if (EconomyIndex >= 2) // Prospering
 	{
-		CreateStations(StationHabitation, InfiniteOrbit, NightsHome, 1, 1 + (StationLevelBonus - 2), SpawnParameters, RandomizeStationLocations);
-		CreateStations(StationFoundry, Quantalium, TheSpire, 1, 1 + (StationLevelBonus - 2), SpawnParameters, RandomizeStationLocations);
-		CreateStations(StationFusion, Sunwatch, TheDepths, 1, 1 + (StationLevelBonus - 2), SpawnParameters, RandomizeStationLocations);
+		CreateStations(GameCache->ID_StationHabitation, InfiniteOrbit, NightsHome, 1, 1 + (StationLevelBonus - 2), SpawnParameters, RandomizeStationLocations);
+		CreateStations(GameCache->ID_StationFoundry, Quantalium, TheSpire, 1, 1 + (StationLevelBonus - 2), SpawnParameters, RandomizeStationLocations);
+		CreateStations(GameCache->ID_StationFusion, Sunwatch, TheDepths, 1, 1 + (StationLevelBonus - 2), SpawnParameters, RandomizeStationLocations);
 
-		CreateShips(ShipOmen, AxisSupplies, BlueHeart, 1 * (EconomyIndex - 1));
-		CreateShips(ShipOmen, BrokenMoon, Colossus, 1 * (EconomyIndex - 1));
-		CreateShips(ShipOmen, GhostWorksShipyards, NightsHome, 1 * (EconomyIndex - 1));
-		CreateShips(ShipOmen, HelixFoundries, TheForge, 1 * (EconomyIndex - 1));
-		CreateShips(ShipOmen, InfiniteOrbit, Tranquility, 1 * (EconomyIndex - 1));
-		CreateShips(ShipOmen, IonLane, FrozenRealm, 1 * (EconomyIndex - 1));
-		CreateShips(ShipOmen, MiningSyndicate, MinersHome, 1 * (EconomyIndex - 1));
-		CreateShips(ShipOmen, NemaHeavyWorks, MinersHome, 1 * (EconomyIndex - 1));
-		CreateShips(ShipOmen, Pirates, Boneyard, 1 * (EconomyIndex - 1));
-		CreateShips(ShipOmen, Quantalium, Crossroads, 1 * (EconomyIndex - 1));
-		CreateShips(ShipOmen, Sunwatch, Lighthouse, 1 * (EconomyIndex - 1));
-		CreateShips(ShipOmen, UnitedFarmsChemicals, TheSpire, 1 * (EconomyIndex - 1));
+		CreateShips(GameCache->ID_ShipOmen, AxisSupplies, BlueHeart, 1 * (EconomyIndex - 1));
+		CreateShips(GameCache->ID_ShipOmen, BrokenMoon, Colossus, 1 * (EconomyIndex - 1));
+		CreateShips(GameCache->ID_ShipOmen, GhostWorksShipyards, NightsHome, 1 * (EconomyIndex - 1));
+		CreateShips(GameCache->ID_ShipOmen, HelixFoundries, TheForge, 1 * (EconomyIndex - 1));
+		CreateShips(GameCache->ID_ShipOmen, InfiniteOrbit, Tranquility, 1 * (EconomyIndex - 1));
+		CreateShips(GameCache->ID_ShipOmen, IonLane, FrozenRealm, 1 * (EconomyIndex - 1));
+		CreateShips(GameCache->ID_ShipOmen, MiningSyndicate, MinersHome, 1 * (EconomyIndex - 1));
+		CreateShips(GameCache->ID_ShipOmen, NemaHeavyWorks, MinersHome, 1 * (EconomyIndex - 1));
+		CreateShips(GameCache->ID_ShipOmen, Pirates, Boneyard, 1 * (EconomyIndex - 1));
+		CreateShips(GameCache->ID_ShipOmen, Quantalium, Crossroads, 1 * (EconomyIndex - 1));
+		CreateShips(GameCache->ID_ShipOmen, Sunwatch, Lighthouse, 1 * (EconomyIndex - 1));
+		CreateShips(GameCache->ID_ShipOmen, UnitedFarmsChemicals, TheSpire, 1 * (EconomyIndex - 1));
 	}
 
 	if (EconomyIndex >= 3) // Maturing
 	{
-		CreateStations(StationHabitation, InfiniteOrbit, TheForge, 1, 1 + (StationLevelBonus - 3), SpawnParameters, RandomizeStationLocations);
-		CreateStations(StationFusion, Sunwatch, TheSpire, 1, 1 + (StationLevelBonus - 3), SpawnParameters, RandomizeStationLocations);
-		CreateStations("station-shipyard", GhostWorksShipyards, TheForge, 1, 1, SpawnParameters, RandomizeStationLocations,0.50,1.0,0.50,1);
+		CreateStations(GameCache->ID_StationHabitation, InfiniteOrbit, TheForge, 1, 1 + (StationLevelBonus - 3), SpawnParameters, RandomizeStationLocations);
+		CreateStations(GameCache->ID_StationFusion, Sunwatch, TheSpire, 1, 1 + (StationLevelBonus - 3), SpawnParameters, RandomizeStationLocations);
+		CreateStations(GameCache->ID_StationShipyard, GhostWorksShipyards, TheForge, 1, 1, SpawnParameters, RandomizeStationLocations,0.50,1.0,0.50,1);
 
-		CreateShips(ShipSphinx, AxisSupplies, BlueHeart, 1);
-		CreateShips(ShipSphinx, InfiniteOrbit, Tranquility, 1);
-		CreateShips(ShipSphinx, IonLane, Tranquility, 1);
+		CreateShips(GameCache->ID_ShipSphinx, AxisSupplies, BlueHeart, 1);
+		CreateShips(GameCache->ID_ShipSphinx, InfiniteOrbit, Tranquility, 1);
+		CreateShips(GameCache->ID_ShipSphinx, IonLane, Tranquility, 1);
 	}
 	if (EconomyIndex >= 4) // Accomplished
 	{
-		CreateStations(StationHabitation, InfiniteOrbit, MinersHome, 1, 1 + (StationLevelBonus - 4), SpawnParameters, RandomizeStationLocations);
-		CreateShips(ShipSphinx, Quantalium, Tranquility, 1);
-		CreateShips(ShipSphinx, GhostWorksShipyards, BlueHeart, 1);
+		CreateStations(GameCache->ID_StationHabitation, InfiniteOrbit, MinersHome, 1, 1 + (StationLevelBonus - 4), SpawnParameters, RandomizeStationLocations);
+		CreateShips(GameCache->ID_ShipSphinx, Quantalium, Tranquility, 1);
+		CreateShips(GameCache->ID_ShipSphinx, GhostWorksShipyards, BlueHeart, 1);
 	}
 
 	if (PlayerData->DifficultyId>=1) // Hard
 	{
-		CreateShips(ShipGhoul, Pirates, Boneyard, 3);
-		CreateShips(ShipGhoul, BrokenMoon, Colossus, 2);
+		CreateShips(GameCache->ID_ShipGhoul, Pirates, Boneyard, 3);
+		CreateShips(GameCache->ID_ShipGhoul, BrokenMoon, Colossus, 2);
 	}
 	if (PlayerData->DifficultyId >= 2) // Very Hard
 	{
-		CreateShips(ShipGhoul, Pirates, Boneyard, 3);
-		CreateShips(ShipOrca, BrokenMoon, Colossus, 2);
+		CreateShips(GameCache->ID_ShipGhoul, Pirates, Boneyard, 3);
+		CreateShips(GameCache->ID_ShipOrca, BrokenMoon, Colossus, 2);
 	}
 	if (PlayerData->DifficultyId >= 3) // Expert
 	{
-		CreateShips(ShipOrca, Pirates, Boneyard, 3);
-		CreateShips(ShipPhalanx, BrokenMoon, Colossus, 2);
+		CreateShips(GameCache->ID_ShipOrca, Pirates, Boneyard, 3);
+		CreateShips(GameCache->ID_ShipPhalanx, BrokenMoon, Colossus, 2);
 	}
 	if (PlayerData->DifficultyId >= 4)  // Unfair
 	{
-		CreateShips(ShipPhalanx, Pirates, Boneyard, 2);
-		CreateShips(ShipKami, Pirates, Boneyard, 1);
-		CreateShips(ShipAnubis, NemaHeavyWorks, BlueHeart, 1);
-		CreateShips(ShipAnubis, GhostWorksShipyards, NightsHome, 1);
-		CreateShips(ShipInvader, Quantalium, NightsHome, 1);
+		CreateShips(GameCache->ID_ShipPhalanx, Pirates, Boneyard, 2);
+		CreateShips(GameCache->ID_ShipKami, Pirates, Boneyard, 1);
+		CreateShips(GameCache->ID_ShipAnubis, NemaHeavyWorks, BlueHeart, 1);
+		CreateShips(GameCache->ID_ShipAnubis, GhostWorksShipyards, NightsHome, 1);
+		CreateShips(GameCache->ID_ShipInvader, Quantalium, NightsHome, 1);
 	}
 
 	for (int CompanyIndex = 0; CompanyIndex < Game->GetGameWorld()->GetCompanies().Num(); CompanyIndex++)
@@ -991,25 +918,11 @@ UFlareSimulatedSpacecraft* UFlareScenarioTools::CreateShips(FName ShipClass, UFl
 	return InitialShip;
 }
 
-/*
-UFlareSimulatedSpacecraft* UFlareScenarioTools::CreatePlayerShip(UFlareSimulatedSector* Sector, FName Class)
-{
-	UFlareSimulatedSpacecraft* InitialShip = nullptr;
-
-	if (Sector)
-	{
-		InitialShip = Sector->CreateSpacecraft(Class, PlayerCompany, FVector::ZeroVector);
-		PlayerData->LastFlownShipIdentifier = InitialShip->GetImmatriculation();
-		PlayerData->PlayerFleetIdentifier = InitialShip->GetCurrentFleet()->GetIdentifier();
-	}
-
-	return InitialShip;
-}
-*/
-
 TArray<UFlareSimulatedSector*> UFlareScenarioTools::GetRandomAllowedSectors(FName StationClass, UFlareCompany* Company) const
 {
 	FFlareSpacecraftDescription* Desc = Game->GetSpacecraftCatalog()->Get(StationClass);
+	UFlareCacheSystem* GameCache = Game->GetCacheSystem();
+
 	TArray<UFlareSimulatedSector*> AllowedSectors;
 	if (Desc)
 	{
@@ -1021,7 +934,7 @@ TArray<UFlareSimulatedSector*> UFlareScenarioTools::GetRandomAllowedSectors(FNam
 			{
 				int32 MaximumAllowedCompany = 7;
 
-				if (StationClass == StationHabitation || StationClass == StationOutpost || StationClass == StationHub)
+				if (StationClass == GameCache->ID_StationHabitation || StationClass == GameCache->ID_StationOutpost || StationClass == GameCache->ID_StationHub)
 				{
 					MaximumAllowedCompany = 1;
 				}
@@ -1170,6 +1083,7 @@ void UFlareScenarioTools::CreateStations(FName StationClass, UFlareCompany* Comp
 				}
 			}
 
+			UFlareCargoBay* StationCargoBay = Station->GetActiveCargoBay();
 
 			for (int32 UniqueInputResourcesIndex = 0; UniqueInputResourcesIndex < UniqueInputResources.Num(); UniqueInputResourcesIndex++)
 			{
@@ -1177,7 +1091,7 @@ void UFlareScenarioTools::CreateStations(FName StationClass, UFlareCompany* Comp
 				if (Resource)
 				{
 					float InputStartRatio = FMath::FRandRange(VarianceMinInputs, VarianceMaxInputs);
-					Station->GetActiveCargoBay()->GiveResources(Resource, Station->GetActiveCargoBay()->GetSlotCapacity() * InputStartRatio, Company);
+					StationCargoBay->GiveResources(Resource, StationCargoBay->GetSlotCapacity() * InputStartRatio, Company);
 				}
 			}
 
@@ -1187,7 +1101,7 @@ void UFlareScenarioTools::CreateStations(FName StationClass, UFlareCompany* Comp
 				if (Resource)
 				{
 					float OutputStartRatio = FMath::FRandRange(VarianceMinOutputs, VarianceMaxOutputs);
-					Station->GetActiveCargoBay()->GiveResources(Resource, Station->GetActiveCargoBay()->GetSlotCapacity() * OutputStartRatio, Company);
+					StationCargoBay->GiveResources(Resource, StationCargoBay->GetSlotCapacity() * OutputStartRatio, Company);
 				}
 			}
 		}
@@ -1207,31 +1121,31 @@ void UFlareScenarioTools::CreateBlueHeart(double StationLevelBonus)
 		// BH Shipyard
 		StationParams.Location = BaseLocation + FVector(StationRadius, 0, 0);
 		StationParams.Rotation = FRotator::ZeroRotator;
-		CreateStations("station-bh-shipyard", NemaHeavyWorks, BlueHeart, 1, 1, StationParams,false,0.50,1,0.50,1);
+		CreateStations(Game->GetCacheSystem()->ID_StationShipyard_Sub_BH, NemaHeavyWorks, BlueHeart, 1, 1, StationParams,false,0.50,1,0.50,1);
 
 		// BH Arsenal
 		StationParams.Location = BaseLocation + FVector(StationRadius, 0, 0).RotateAngleAxis(30, UpVector);
 		StationParams.Rotation = FRotator::MakeFromEuler(FVector(0, 0, 30));
-		CreateStations("station-bh-arsenal", AxisSupplies, BlueHeart, 1, 1 + StationLevelBonus, StationParams);
+		CreateStations(Game->GetCacheSystem()->ID_StationArsenal_Sub_BH, AxisSupplies, BlueHeart, 1, 1 + StationLevelBonus, StationParams);
 
 		// BH Hub
 		StationParams.Location = BaseLocation + FVector(StationRadius, 0, 0).RotateAngleAxis(-30, UpVector);
 		StationParams.Rotation = FRotator::MakeFromEuler(FVector(0, 0, -30));
-		CreateStations("station-bh-hub", IonLane, BlueHeart, 1, 1 + StationLevelBonus, StationParams);
+		CreateStations(Game->GetCacheSystem()->ID_StationHub_Sub_BH, IonLane, BlueHeart, 1, 1 + StationLevelBonus, StationParams);
 
 		// BH Habitation 1
 		StationParams.Location = BaseLocation + FVector(StationRadius + 600, 0, 7168);
 		StationParams.Rotation = FRotator::MakeFromEuler(FVector(180, 0, 0));
-		CreateStations("station-bh-habitation", NemaHeavyWorks, BlueHeart, 1, 1 + StationLevelBonus, StationParams);
+		CreateStations(Game->GetCacheSystem()->ID_StationHabitation_Sub_BH, NemaHeavyWorks, BlueHeart, 1, 1 + StationLevelBonus, StationParams);
 
 		// BH Habitation 2
 		StationParams.Location = BaseLocation + FVector(StationRadius + 600, 0, -7168);
 		StationParams.Rotation = FRotator::MakeFromEuler(FVector(0, 0, 0));
-		CreateStations("station-bh-habitation", UnitedFarmsChemicals, BlueHeart, 1, 1 + StationLevelBonus, StationParams);
+		CreateStations(Game->GetCacheSystem()->ID_StationHabitation_Sub_BH, UnitedFarmsChemicals, BlueHeart, 1, 1 + StationLevelBonus, StationParams);
 
 		FFlareStationSpawnParameters DummyStationParams;
-		CreateStations(StationCarbonRefinery, UnitedFarmsChemicals, BlueHeart, 1, 2 + StationLevelBonus, DummyStationParams);
-		CreateStations(StationPlasticsRefinery, UnitedFarmsChemicals, BlueHeart, 1, 2 + StationLevelBonus, DummyStationParams);
+		CreateStations(Game->GetCacheSystem()->ID_StationCarbonRefinery, UnitedFarmsChemicals, BlueHeart, 1, 2 + StationLevelBonus, DummyStationParams);
+		CreateStations(Game->GetCacheSystem()->ID_StationPlasticsRefinery, UnitedFarmsChemicals, BlueHeart, 1, 2 + StationLevelBonus, DummyStationParams);
 	}
 }
 
@@ -1250,22 +1164,22 @@ void UFlareScenarioTools::CreateBoneyard(double StationLevelBonus)
 		// BY Shipyard
 		StationParams.Location = BaseLocation + FVector(CoreLength, 0, 0);
 		StationParams.Rotation = FRotator::ZeroRotator;
-		CreateStations("station-by-shipyard", Pirates, Boneyard, 1, 1, StationParams,false,0.50,1,0.50,1);
+		CreateStations(Game->GetCacheSystem()->ID_StationShipyard_Sub_BY, Pirates, Boneyard, 1, 1, StationParams,false,0.50,1,0.50,1);
 
 		// BY Arsenal
 		StationParams.Location = BaseLocation + FVector(BoneLength, 0, BoneHeight).RotateAngleAxis(120, FrontVector);
 		StationParams.Rotation = FRotator::MakeFromEuler(FVector(0, 210, 90));
-		CreateStations("station-by-arsenal", Pirates, Boneyard, 1, 1 + StationLevelBonus, StationParams);
+		CreateStations(Game->GetCacheSystem()->ID_StationArsenal_Sub_BY, Pirates, Boneyard, 1, 1 + StationLevelBonus, StationParams);
 
 		// BY Hub
 		StationParams.Location = BaseLocation + FVector(2 * BoneLength, 0, BoneHeight).RotateAngleAxis(-120, FrontVector);
 		StationParams.Rotation = FRotator::MakeFromEuler(FVector(0, -150, -90));
-		CreateStations("station-by-hub", Pirates, Boneyard, 1, 1 + StationLevelBonus, StationParams);
+		CreateStations(Game->GetCacheSystem()->ID_StationHub_Sub_BY, Pirates, Boneyard, 1, 1 + StationLevelBonus, StationParams);
 
 		// BY Habitation
 		StationParams.Location = BaseLocation + FVector(3 * BoneLength, 0, BoneHeight);
 		StationParams.Rotation = FRotator::MakeFromEuler(FVector(180, 90, 0));
-		CreateStations("station-by-habitation", Pirates, Boneyard, 1, 1 + StationLevelBonus, StationParams);
+		CreateStations(Game->GetCacheSystem()->ID_StationHabitation_Sub_BY, Pirates, Boneyard, 1, 1 + StationLevelBonus, StationParams);
 	}
 }
 
@@ -1282,17 +1196,17 @@ void UFlareScenarioTools::CreateNightsHome(double StationLevelBonus)
 		// NH Arsenal
 		StationParams.Location = BaseLocation + FVector(StationRadius, 0, 0).RotateAngleAxis(-135, UpVector);
 		StationParams.Rotation = FRotator::MakeFromEuler(FVector(90, 0, -135));
-		CreateStations("station-nh-arsenal", AxisSupplies, NightsHome, 1, 2 + StationLevelBonus, StationParams);
+		CreateStations(Game->GetCacheSystem()->ID_StationArsenal_Sub_NH, AxisSupplies, NightsHome, 1, 2 + StationLevelBonus, StationParams);
 
 		// NH Shipyard
 		StationParams.Location = BaseLocation + FVector(StationRadius, 0, 0).RotateAngleAxis(180, UpVector);
 		StationParams.Rotation = FRotator::MakeFromEuler(FVector(0, 0, 180));
-		CreateStations("station-nh-shipyard", GhostWorksShipyards, NightsHome, 1, 1, StationParams,false,0.50,1,0.50,1);
+		CreateStations(Game->GetCacheSystem()->ID_StationShipyard_Sub_NH, GhostWorksShipyards, NightsHome, 1, 1, StationParams,false,0.50,1,0.50,1);
 
 		// NH Habitation
 		StationParams.Location = BaseLocation + FVector(StationRadius, 0, 0).RotateAngleAxis(135, UpVector);
 		StationParams.Rotation = FRotator::MakeFromEuler(FVector(-90, 0, 135));
-		CreateStations("station-nh-habitation", GhostWorksShipyards, NightsHome, 1, 1 + StationLevelBonus, StationParams);
+		CreateStations(Game->GetCacheSystem()->ID_StationHabitation_Sub_NH, GhostWorksShipyards, NightsHome, 1, 1 + StationLevelBonus, StationParams);
 	}
 }
 
@@ -1309,42 +1223,42 @@ void UFlareScenarioTools::CreateTheFarm(double StationLevelBonus)
 		// TF Arsenal
 		StationParams.Location = BaseLocation + FVector(StationRadius, StationLength, 0);
 		StationParams.Rotation = FRotator::MakeFromEuler(FVector(-90, 0, 90));
-		CreateStations("station-tf-arsenal", AxisSupplies, TheFarm, 1, 1 + StationLevelBonus, StationParams);
+		CreateStations(Game->GetCacheSystem()->ID_StationArsenal_Sub_TF, AxisSupplies, TheFarm, 1, 1 + StationLevelBonus, StationParams);
 
 		// TF Hub
 		StationParams.Location = BaseLocation + FVector(-StationRadius, StationLength, 0);
 		StationParams.Rotation = FRotator::MakeFromEuler(FVector(90, 0, 90));
-		CreateStations("station-tf-hub", AxisSupplies, TheFarm, 1, 1 + StationLevelBonus, StationParams);
+		CreateStations(Game->GetCacheSystem()->ID_StationHub_Sub_TF, AxisSupplies, TheFarm, 1, 1 + StationLevelBonus, StationParams);
 
 		// TF Habitation
 		StationParams.Location = BaseLocation + FVector(0, StationLength, StationRadius);
 		StationParams.Rotation = FRotator::MakeFromEuler(FVector(0, 0, 90));
-		CreateStations("station-tf-habitation", UnitedFarmsChemicals, TheFarm, 1, 1 + StationLevelBonus, StationParams);
+		CreateStations(Game->GetCacheSystem()->ID_StationHabitation_Sub_TF, UnitedFarmsChemicals, TheFarm, 1, 1 + StationLevelBonus, StationParams);
 
 		// TF Power plant
 		StationParams.Location = BaseLocation + FVector(0, StationLength, -StationRadius);
 		StationParams.Rotation = FRotator::MakeFromEuler(FVector(180, 0, 90));
-		CreateStations("station-tf-solar-plant", Sunwatch, TheFarm, 1, 1 + StationLevelBonus, StationParams);
+		CreateStations(Game->GetCacheSystem()->ID_StationSolarPlant_Sub_TF, Sunwatch, TheFarm, 1, 1 + StationLevelBonus, StationParams);
 
 		// TF Farm 1
 		StationParams.Location = BaseLocation + FVector(0, -StationLength, StationRadius);
 		StationParams.Rotation = FRotator::MakeFromEuler(FVector(0, 0, -90));
-		CreateStations("station-tf-farm", Sunwatch, TheFarm, 1, 1 + StationLevelBonus, StationParams);
+		CreateStations(Game->GetCacheSystem()->ID_StationFarm_Sub_TF, Sunwatch, TheFarm, 1, 1 + StationLevelBonus, StationParams);
 
 		// TF Farm 2
 		StationParams.Location = BaseLocation + FVector(0, -StationLength, -StationRadius);
 		StationParams.Rotation = FRotator::MakeFromEuler(FVector(180, 0, -90));
-		CreateStations("station-tf-farm", Sunwatch, TheFarm, 1, 1 + StationLevelBonus, StationParams);
+		CreateStations(Game->GetCacheSystem()->ID_StationFarm_Sub_TF, Sunwatch, TheFarm, 1, 1 + StationLevelBonus, StationParams);
 
 		// TF Farm 3
 		StationParams.Location = BaseLocation + FVector(StationRadius, -StationLength, 0);
 		StationParams.Rotation = FRotator::MakeFromEuler(FVector(90, 0, -90));
-		CreateStations("station-tf-farm", Sunwatch, TheFarm, 1, 1 + StationLevelBonus, StationParams);
+		CreateStations(Game->GetCacheSystem()->ID_StationFarm_Sub_TF, Sunwatch, TheFarm, 1, 1 + StationLevelBonus, StationParams);
 
 		// TF Farm 4
 		StationParams.Location = BaseLocation + FVector(-StationRadius, -StationLength, 0);
 		StationParams.Rotation = FRotator::MakeFromEuler(FVector(-90, 0, -90));
-		CreateStations("station-tf-farm", Sunwatch, TheFarm, 1, 1 + StationLevelBonus, StationParams);
+		CreateStations(Game->GetCacheSystem()->ID_StationFarm_Sub_TF, Sunwatch, TheFarm, 1, 1 + StationLevelBonus, StationParams);
 	}
 }
 

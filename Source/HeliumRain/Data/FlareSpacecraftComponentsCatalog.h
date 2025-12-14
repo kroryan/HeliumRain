@@ -35,6 +35,9 @@ public:
 	UPROPERTY(EditAnywhere, Category = Content)
 	TArray<UFlareSpacecraftComponentsCatalogEntry*> MetaCatalog;
 
+	UPROPERTY(EditAnywhere, Category = Content)
+	TMap<FName, UFlareSpacecraftComponentsCatalogEntry*> ComponentCatalogMap;
+
 public:
 
 	/*----------------------------------------------------

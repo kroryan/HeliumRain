@@ -88,6 +88,7 @@ protected:
 	/** Warning on no military */
 	EVisibility GetNoMilitaryWarningVisibility() const;
 
+	EVisibility IsPreviousContractsVisible() const;
 
 	/*----------------------------------------------------
 		Callbacks
@@ -127,6 +128,8 @@ protected:
 	TSharedPtr<SVerticalBox>                        PreviousQuestList;
 	TSharedPtr<SVerticalBox>                        TutorialsList;	
 	TSharedPtr<SVerticalBox>                        QuestDetails;
+
+	TSharedPtr<SFlareButton>						ShowPreviousContractsButton;
 
 	// Data
 	UFlareQuest*                                    SelectedQuest;

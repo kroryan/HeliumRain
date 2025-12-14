@@ -1,4 +1,3 @@
-
 #include "FlareSpacecraftComponentsCatalog.h"
 #include "../Flare.h"
 #include "../Player/FlarePlayerController.h"
@@ -112,6 +111,9 @@ void UFlareSpacecraftComponentsCatalog::InitialSetup(AFlareGame* GameMode)
 			{
 				MetaCatalog.Add(SpacecraftComponent);
 			}
+
+			ComponentCatalogMap.Add(SpacecraftComponent->Data.Identifier, SpacecraftComponent);
+
 		}
 	}
 
@@ -340,56 +342,12 @@ void UFlareSpacecraftComponentsCatalog::ReplaceOldEntrySettings(FFlareSpacecraft
 
 FFlareSpacecraftComponentDescription* UFlareSpacecraftComponentsCatalog::Get(FName Identifier) const
 {
-	FFlareSpacecraftComponentDescription* Part = NULL;
-
-	auto FindByName = [=](const UFlareSpacecraftComponentsCatalogEntry* Candidate)
+	UFlareSpacecraftComponentsCatalogEntry* const* EntryPtr = ComponentCatalogMap.Find(Identifier);
+	if (EntryPtr && *EntryPtr)
 	{
-		return Candidate && Candidate->Data.Identifier == Identifier;
-	};
-
-	UFlareSpacecraftComponentsCatalogEntry* const* Temp = EngineCatalog.FindByPredicate(FindByName);
-	if (Temp)
-	{
-		Part = &(*Temp)->Data;
+		return &(*EntryPtr)->Data;
 	}
-
-	if (!Part)
-	{
-		Temp = RCSCatalog.FindByPredicate(FindByName);
-		if (Temp)
-		{
-			Part = &(*Temp)->Data;
-		}
-	}
-
-	if (!Part)
-	{
-		Temp = WeaponCatalog.FindByPredicate(FindByName);
-		if (Temp)
-		{
-			Part = &(*Temp)->Data;
-		}
-	}
-
-	if (!Part)
-	{
-		Temp = InternalComponentsCatalog.FindByPredicate(FindByName);
-		if (Temp)
-		{
-			Part = &(*Temp)->Data;
-		}
-	}
-	
-	if (!Part)
-	{
-		Temp = MetaCatalog.FindByPredicate(FindByName);
-		if (Temp)
-		{
-			Part = &(*Temp)->Data;
-		}
-	}
-
-	return Part;
+	return nullptr;
 }
 
 const void UFlareSpacecraftComponentsCatalog::GetEngineList(TArray<FFlareSpacecraftComponentDescription*>& OutData, TEnumAsByte<EFlarePartSize::Type> Size, UFlareCompany* FilterCompany, UFlareSimulatedSpacecraft* FilterShip, FFlareSpacecraftComponentDescription* IgnoreDescription)

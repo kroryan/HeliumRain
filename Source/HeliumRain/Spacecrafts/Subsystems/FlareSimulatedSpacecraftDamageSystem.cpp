@@ -73,10 +73,16 @@ void UFlareSimulatedSpacecraftDamageSystem::Initialize(UFlareSimulatedSpacecraft
 void UFlareSimulatedSpacecraftDamageSystem::SetDead()
 {
 	IsDeadOverride = true;
-	UFlareSpacecraftComponentsCatalog* Catalog = Spacecraft->GetGame()->GetShipPartsCatalog();
-	for (FFlareSpacecraftComponentSave& ComponentData : Spacecraft->GetData().Components)
+
+	TArray<FFlareSpacecraftComponentSave>& Components = Spacecraft->GetData().Components;
+	int32 ComponentsNum = Components.Num();
+
+	TArray<FFlareSpacecraftComponentDescription*> AllComponentDescriptions = Spacecraft->GetAllComponentDescriptions();
+
+	for (int32 ComponentIndex = 0; ComponentIndex < ComponentsNum; ++ComponentIndex)
 	{
-		FFlareSpacecraftComponentDescription* ComponentDescription = Catalog->Get(ComponentData.ComponentIdentifier);
+		FFlareSpacecraftComponentSave& ComponentData = Components[ComponentIndex];
+		FFlareSpacecraftComponentDescription* ComponentDescription = AllComponentDescriptions[ComponentIndex];
 		ComponentData.Damage = GetMaxHitPoints(ComponentDescription);
 	}
 }
@@ -87,6 +93,7 @@ bool UFlareSimulatedSpacecraftDamageSystem::IsAlive() const
 	{
 		return true;
 	}
+
 	if (IsDeadOverride) return false;
 	return GetSubsystemHealth(EFlareSubsystem::SYS_LifeSupport) > 0;
 }
@@ -101,9 +108,10 @@ float UFlareSimulatedSpacecraftDamageSystem::GetPowerOutageDuration() const
 	return Data->PowerOutageDelay;
 }
 
-bool UFlareSimulatedSpacecraftDamageSystem::IsStranded() const
+bool UFlareSimulatedSpacecraftDamageSystem::IsStranded(bool SkipAliveCheck) const
 {
-	if (!IsAlive()) {
+	if (!SkipAliveCheck && !IsAlive())
+	{
 		return false;
 	}
 
@@ -113,14 +121,15 @@ bool UFlareSimulatedSpacecraftDamageSystem::IsStranded() const
 	}
 	return (GetSubsystemHealth(EFlareSubsystem::SYS_Propulsion) < 0.3f || IsUncontrollable());
 }
-bool UFlareSimulatedSpacecraftDamageSystem::IsUncontrollable() const
+
+bool UFlareSimulatedSpacecraftDamageSystem::IsUncontrollable(bool SkipAliveCheck) const
 {
 	if (Spacecraft->IsStation())
 	{
 		return false;
 	}
 
-	if (!IsAlive())
+	if (!SkipAliveCheck && !IsAlive())
 	{
 		return true;
 	}
@@ -128,7 +137,7 @@ bool UFlareSimulatedSpacecraftDamageSystem::IsUncontrollable() const
 	return (GetSubsystemHealth(EFlareSubsystem::SYS_RCS) == 0.0f);
 }
 
-bool UFlareSimulatedSpacecraftDamageSystem::IsDisarmed() const
+bool UFlareSimulatedSpacecraftDamageSystem::IsDisarmed(bool SkipAliveCheck) const
 {
 	if(!Spacecraft->IsMilitaryArmed())
 	{
@@ -145,7 +154,7 @@ bool UFlareSimulatedSpacecraftDamageSystem::IsDisarmed() const
 		return true;
 	}
 
-	if (!IsAlive())
+	if (!SkipAliveCheck && !IsAlive())
 	{
 		return true;
 	}
@@ -172,11 +181,16 @@ bool UFlareSimulatedSpacecraftDamageSystem::IsCrewEndangered() const
 float UFlareSimulatedSpacecraftDamageSystem::GetGlobalDamageRatio()
 {
 	float DamageRatioSum = 0;
-	UFlareSpacecraftComponentsCatalog* Catalog = Spacecraft->GetGame()->GetShipPartsCatalog();
 
-	for (FFlareSpacecraftComponentSave& ComponentData : Spacecraft->GetData().Components)
+	TArray<FFlareSpacecraftComponentSave>& Components = Spacecraft->GetData().Components;
+	int32 ComponentsNum = Components.Num();
+
+	TArray<FFlareSpacecraftComponentDescription*> AllComponentDescriptions = Spacecraft->GetAllComponentDescriptions();
+
+	for (int32 ComponentIndex = 0; ComponentIndex < ComponentsNum; ++ComponentIndex)
 	{
-		FFlareSpacecraftComponentDescription* ComponentDescription = Catalog->Get(ComponentData.ComponentIdentifier);
+		FFlareSpacecraftComponentSave& ComponentData = Components[ComponentIndex];
+		FFlareSpacecraftComponentDescription* ComponentDescription = AllComponentDescriptions[ComponentIndex];
 
 		float DamageRatio = GetDamageRatio(ComponentDescription, &ComponentData);
 		DamageRatioSum += DamageRatio;
@@ -304,13 +318,14 @@ float UFlareSimulatedSpacecraftDamageSystem::Refill(FFlareSpacecraftComponentDes
 			 float MaxRefillRatio,
 			 float MaxFS)
 {
-	float RefillCost = 0.f;
-	float MaxAffordableRatio = MaxFS / (float) GetRefillCost(ComponentDescription);
-
-	if(ComponentDescription->Type != EFlarePartType::Weapon)
+	if (ComponentDescription->Type != EFlarePartType::Weapon)
 	{
 		return 0.f;
 	}
+
+	float RefillCost = 0.f;
+	float MaxAffordableRatio = MaxFS / (float) GetRefillCost(ComponentDescription);
+
 	int32 MaxAmmo = ComponentDescription->WeaponCharacteristics.AmmoCapacity;
 	int32 CurrentAmmo = MaxAmmo - ComponentData->Weapon.FiredAmmo;
 
@@ -489,9 +504,9 @@ float UFlareSimulatedSpacecraftDamageSystem::GetMaxHitPoints(FFlareSpacecraftCom
 {
 	float MaxHitPoint = Spacecraft->GetLevel() * ComponentDescription->HitPoints;
 
-	if(Spacecraft->IsComplex())
+	if (Spacecraft->IsComplex())
 	{
-		for(UFlareSimulatedSpacecraft* Child: Spacecraft->GetComplexChildren())
+		for (UFlareSimulatedSpacecraft* Child : Spacecraft->GetComplexChildren())
 		{
 			MaxHitPoint += Child->GetDamageSystem()->GetMaxHitPoints(ComponentDescription);
 		}
@@ -500,16 +515,18 @@ float UFlareSimulatedSpacecraftDamageSystem::GetMaxHitPoints(FFlareSpacecraftCom
 	return MaxHitPoint;
 }
 
-
 float UFlareSimulatedSpacecraftDamageSystem::GetDamageRatio(FFlareSpacecraftComponentDescription* ComponentDescription,
 															FFlareSpacecraftComponentSave* ComponentData) const
 {
 	if (ComponentDescription)
 	{
-		float MaxHitPoints = GetMaxHitPoints(ComponentDescription);
-
-		float RemainingHitPoints = MaxHitPoints - ComponentData->Damage;
-		return FMath::Clamp(RemainingHitPoints / MaxHitPoints, 0.f, 1.f);
+		if (ComponentData->Damage > 0)
+		{
+			float MaxHitPoints = GetMaxHitPoints(ComponentDescription);
+			float RemainingHitPoints = MaxHitPoints - ComponentData->Damage;
+			return FMath::Clamp(RemainingHitPoints / MaxHitPoints, 0.f, 1.f);
+		}
+		return 1.f;
 	}
 	else
 	{
@@ -745,14 +762,17 @@ void UFlareSimulatedSpacecraftDamageSystem::UpdatePower(FFlareSpacecraftComponen
 	}
 	else
 	{
-		UFlareSpacecraftComponentsCatalog* Catalog = Spacecraft->GetGame()->GetShipPartsCatalog();
 		bool HasPowerSource = false;
 
-		for (int32 ComponentIndex = 0; ComponentIndex < Data->Components.Num(); ComponentIndex++)
+		TArray<FFlareSpacecraftComponentSave>& Components = Spacecraft->GetData().Components;
+		int32 ComponentsNum = Components.Num();
+
+		TArray<FFlareSpacecraftComponentDescription*> AllComponentDescriptions = Spacecraft->GetAllComponentDescriptions();
+
+		for (int32 ComponentIndex = 0; ComponentIndex < ComponentsNum; ++ComponentIndex)
 		{
 			FFlareSpacecraftComponentSave* ComponentData = &Data->Components[ComponentIndex];
-
-			FFlareSpacecraftComponentDescription* ComponentDescription = Catalog->Get(ComponentData->ComponentIdentifier);
+			FFlareSpacecraftComponentDescription* ComponentDescription = AllComponentDescriptions[ComponentIndex];
 
 			FFlareSpacecraftSlotDescription* SlotDescription = NULL;
 
@@ -789,12 +809,13 @@ void UFlareSimulatedSpacecraftDamageSystem::UpdatePower(FFlareSpacecraftComponen
 				}
 			}
 		}
-
-		if (!HasPowerSource)
+#if !UE_BUILD_SHIPPING
+		if (!HasPowerSource && ComponentToPowerData)
 		{
 			FLOGV("Warning: %s : %s has no power source", *Spacecraft->GetImmatriculation().ToString(),
 				  *ComponentToPowerData->ShipSlotIdentifier.ToString());
 		}
+#endif
 	}
 
 	ComponentToPowerData->IsPoweredCacheIndex = IsPoweredCacheIndex;

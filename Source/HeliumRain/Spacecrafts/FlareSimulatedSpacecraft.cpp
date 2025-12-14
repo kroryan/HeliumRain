@@ -41,7 +41,6 @@ UFlareSimulatedSpacecraft::UFlareSimulatedSpacecraft(const FObjectInitializer& O
 	: Super(ObjectInitializer)
 {
 	ActiveSpacecraft = NULL;
-
 }
 
 void UFlareSimulatedSpacecraft::Load(const FFlareSpacecraftSave& Data)
@@ -51,14 +50,15 @@ void UFlareSimulatedSpacecraft::Load(const FFlareSpacecraftSave& Data)
 	SpacecraftData = Data;
 
 	ComplexChildren.Empty();
+	ClearTemporaryCaches();
 
 	// Load spacecraft description
 	SpacecraftDescription = Game->GetSpacecraftCatalog()->Get(Data.Identifier);
+	UFlareSpacecraftComponentsCatalog* Catalog = GetGame()->GetShipPartsCatalog();
 
 	if (Data.SaveVersion < SpacecraftDescription->SaveVersion)
 	{
 	//Version number incremented in spaceship data, check component quantities match and attempt fix (prevents crashes from mod updates)
-		UFlareSpacecraftComponentsCatalog* Catalog = GetGame()->GetShipPartsCatalog();
 
 		FName RCSIdentifier;
 		FName OrbitalEngineIdentifier;
@@ -78,6 +78,7 @@ void UFlareSimulatedSpacecraft::Load(const FFlareSpacecraftSave& Data)
 		TArray<FFlareSpacecraftComponentSave*> InternalComponents;
 		TArray<FFlareSpacecraftComponentSave*> OrbitalEngineComponents;
 		TArray<FFlareSpacecraftComponentSave*> RCSComponents;
+
 
 		for (int32 ComponentIndex = 0; ComponentIndex < GetData().Components.Num(); ComponentIndex++)
 		{
@@ -101,7 +102,6 @@ void UFlareSimulatedSpacecraft::Load(const FFlareSpacecraftSave& Data)
 				{
 					TurretComponents.Add(ComponentData);
 				}
-//ComponentDescription->WeaponCharacteristics.GunCharacteristics.IsGun,ComponentDescription->WeaponCharacteristics.BombCharacteristics.IsBomb
 				else
 				{
 					GunComponents.Add(ComponentData);
@@ -297,6 +297,23 @@ void UFlareSimulatedSpacecraft::Load(const FFlareSpacecraftSave& Data)
 		SpacecraftData.SaveVersion = SpacecraftDescription->SaveVersion;
 	}
 
+	AllComponentDescriptions.Empty();
+	AllComponentDescriptions.Reserve(GetData().Components.Num());
+
+	for (int32 ComponentIndex = 0; ComponentIndex < GetData().Components.Num(); ComponentIndex++)
+	{
+		FFlareSpacecraftComponentSave* ComponentData = &GetData().Components[ComponentIndex];
+		FFlareSpacecraftComponentDescription* ComponentDescription = Catalog->Get(ComponentData->ComponentIdentifier);
+
+		AllComponentDescriptions.Add(ComponentDescription);
+
+		if (ComponentDescription->Type == EFlarePartType::Weapon)
+		{
+			WeaponComponentPointers.Add(ComponentData);
+			WeaponComponentDescriptions.Add(ComponentDescription);
+		}
+	}
+
 	// Initialize damage system
 	if (!DamageSystem)
 	{
@@ -304,7 +321,6 @@ void UFlareSimulatedSpacecraft::Load(const FFlareSpacecraftSave& Data)
 	}
 
 	DamageSystem->Initialize(this, &SpacecraftData);
-
 	// Initialize weapons system
 	if (!WeaponsSystem)
 	{
@@ -315,7 +331,9 @@ void UFlareSimulatedSpacecraft::Load(const FFlareSpacecraftSave& Data)
 
 	// Initialize complex
 
+	Cached_IsComplexElement = SpacecraftData.AttachComplexStationName != NAME_None;
 	ComplexChildren.Empty();
+
 	if (IsComplex())
 	{
 		ComplexMaster = this;
@@ -444,6 +462,10 @@ void UFlareSimulatedSpacecraft::Load(const FFlareSpacecraftSave& Data)
 
 			// Create construction factory
 			Factory->Load(this, FactoryDescription, FactoryData);
+
+			Factory->SetInfiniteCycle(false);
+			Factory->SetCycleCount(1);
+
 			Factories.Add(Factory);
 			if (!IsDestroyed())
 			{
@@ -454,8 +476,9 @@ void UFlareSimulatedSpacecraft::Load(const FFlareSpacecraftSave& Data)
 		}
 	}
 
-	// Cargo bay init
-	if (SpacecraftData.AttachComplexStationName == NAME_None)
+	// Cargo bay init for main stations
+//	if (SpacecraftData.AttachComplexStationName == NAME_None)
+	if (!Cached_IsComplexElement)
 	{
 		int32 ProductionCargoBaySlotCapacity = 0;
 		int32 ProductionCargoBayCount = 0;
@@ -488,9 +511,16 @@ void UFlareSimulatedSpacecraft::Load(const FFlareSpacecraftSave& Data)
 		ConstructionCargoBay = nullptr;
 	}
 
-	if (!IsComplexElement() && IsUnderConstruction())
+	if (!IsComplexElement())
 	{
-		AutoFillConstructionCargoBay();
+		if (IsUnderConstruction())
+		{
+			AutoFillConstructionCargoBay();
+		}
+		else
+		{
+			AutoFillProductionExcessConCargoBay();
+		}
 	}
 
 	// Setup station connectors
@@ -579,19 +609,17 @@ void UFlareSimulatedSpacecraft::Load(const FFlareSpacecraftSave& Data)
 		}
 	}
 
-	if (SpacecraftData.OwnedShipNames.Num() > 0)
+	for (int32 Index = 0; Index < SpacecraftData.OwnedShipNames.Num(); Index++)
 	{
-		for (FName OwnedShips : SpacecraftData.OwnedShipNames)
+		UFlareSimulatedSpacecraft* ChildShip = Company->FindSpacecraft(SpacecraftData.OwnedShipNames[Index]);
+		if (ChildShip && !ChildShip->IsDestroyed())
 		{
-			UFlareSimulatedSpacecraft* ChildShip = Company->FindSpacecraft(OwnedShips);
-			if (ChildShip && !ChildShip->IsDestroyed())
-			{
-				AddShipChildren(ChildShip);
-			}
-			else
-			{
-				SpacecraftData.OwnedShipNames.Remove(OwnedShips);
-			}
+			AddShipChildren(ChildShip);
+		}
+		else
+		{
+			SpacecraftData.OwnedShipNames.RemoveAt(Index);
+			Index--;
 		}
 	}
 
@@ -614,6 +642,11 @@ void UFlareSimulatedSpacecraft::Load(const FFlareSpacecraftSave& Data)
 	}
 
 	UpdateEngineAcceleration();
+}
+
+void UFlareSimulatedSpacecraft::ClearTemporaryCaches()
+{
+	Cached_Efficiency = -100.f;
 }
 
 void UFlareSimulatedSpacecraft::Reload()
@@ -650,7 +683,6 @@ FFlareSpacecraftSave* UFlareSimulatedSpacecraft::Save()
 
 	SpacecraftData.FactoryStates.Empty();
 	SpacecraftData.FactoryStates.Reserve(AllFactories.Num());
-
 	for (int FactoryIndex = 0; FactoryIndex < AllFactories.Num(); FactoryIndex++)
 	{
 		SpacecraftData.FactoryStates.Add(*AllFactories[FactoryIndex]->Save());
@@ -811,9 +843,9 @@ UFlareCompanyWhiteList* UFlareSimulatedSpacecraft::GetActiveWhitelist()
 	{
 		return GetCurrentFleet()->GetSelectedWhiteList();
 	}
-	if (GetCompany() && GetCompany()->GetCompanySelectedWhiteList())
+	if (Company && Company->GetCompanySelectedWhiteList())
 	{
-		return GetCompany()->GetCompanySelectedWhiteList();
+		return Company->GetCompanySelectedWhiteList();
 	}
 
 	return nullptr;
@@ -941,7 +973,7 @@ void UFlareSimulatedSpacecraft::SetCurrentSector(UFlareSimulatedSector* Sector)
 	// Mark the sector as visited
 	if (!Sector->IsTravelSector())
 	{
-		GetCompany()->VisitSector(Sector);
+		Company->VisitSector(Sector);
 	}
 
 	if(IsComplex())
@@ -959,7 +991,7 @@ bool UFlareSimulatedSpacecraft::TryMigrateDrones()
 	{
 		for (UFlareSimulatedSpacecraft* SectorShip : CurrentSector->GetSectorShips())
 		{
-			if (SectorShip == this || !SectorShip->GetDescription()->IsDroneCarrier || SectorShip->GetCompany() != this->GetCompany() || !SectorShip->GetDamageSystem()->IsAlive() || this->ShipMaster == SectorShip)
+			if (SectorShip == this || !SectorShip->GetDescription()->IsDroneCarrier || SectorShip->GetCompany() != Company || !SectorShip->GetDamageSystem()->IsAlive() || ShipMaster == SectorShip)
 			{
 				continue;
 			}
@@ -988,7 +1020,7 @@ bool UFlareSimulatedSpacecraft::TryMigrateDrones()
 		}
 	}
 
-	GetCompany()->DestroySpacecraft(this);
+	Company->DestroySpacecraft(this);
 //	GetDamageSystem()->SetDead();
 	return false;
 }
@@ -1120,7 +1152,7 @@ bool UFlareSimulatedSpacecraft::CanTradeWith(UFlareSimulatedSpacecraft* OtherSpa
 	}
 
 	// Check if both spacecraft are not at war
-	if (GetCompany()->GetWarState(OtherSpacecraft->GetCompany()) == EFlareHostility::Hostile)
+	if (Company->GetWarState(OtherSpacecraft->GetCompany()) == EFlareHostility::Hostile)
 	{
 		Reason = LOCTEXT("CantTradeWar", "Can't trade between enemies");
 		return false;
@@ -1238,7 +1270,8 @@ FFlareResourceUsage UFlareSimulatedSpacecraft::GetResourceUseType(FFlareResource
 
 void UFlareSimulatedSpacecraft::LockResources()
 {
-	GetActiveCargoBay()->UnlockAll();
+	UFlareCargoBay* CargoBay = GetActiveCargoBay();
+	CargoBay->UnlockAll();
 
 	TMap<FFlareResourceDescription*, EFlareResourceLock::Type> LockMap;
 
@@ -1278,11 +1311,6 @@ void UFlareSimulatedSpacecraft::LockResources()
 				{
 					AddLockInMap(&Resource->Resource->Data, EFlareResourceLock::Hidden);
 				}
-
-				/*if (!GetActiveCargoBay()->LockSlot(&Resource->Resource->Data, EFlareResourceLock::Input, false))
-				{
-					FLOGV("Fail to lock a slot of %s in %s", *(&Resource->Resource->Data)->Name.ToString(), *GetImmatriculation().ToString());
-				}*/
 			}
 
 			for (int32 ResourceIndex = 0; ResourceIndex < Factory->GetCycleData().OutputResources.Num(); ResourceIndex++)
@@ -1296,12 +1324,6 @@ void UFlareSimulatedSpacecraft::LockResources()
 				{
 					AddLockInMap(&Resource->Resource->Data, EFlareResourceLock::Hidden);
 				}
-
-
-				/*if (!GetActiveCargoBay()->LockSlot(&Resource->Resource->Data, EFlareResourceLock::Output, false))
-				{
-					FLOGV("Fail to lock a slot of %s in %s", *(&Resource->Resource->Data)->Name.ToString(), *GetImmatriculation().ToString());
-				}*/
 			}
 		}
 	}
@@ -1314,12 +1336,6 @@ void UFlareSimulatedSpacecraft::LockResources()
 			{
 				FFlareResourceDescription* Resource = &GetGame()->GetResourceCatalog()->ConsumerResources[ResourceIndex]->Data;
 				AddLockInMap(Resource, EFlareResourceLock::Input);
-
-
-				/*if (!GetActiveCargoBay()->LockSlot(Resource, EFlareResourceLock::Input, false))
-				{
-					FLOGV("Fail to lock a slot of %s in %s", *Resource->Name.ToString(), *GetImmatriculation().ToString());
-				}*/
 			}
 		}
 
@@ -1355,7 +1371,7 @@ void UFlareSimulatedSpacecraft::LockResources()
 				}
 
 				// Lock resource with stock in cargo bay as Output
-				int32 ResourceQuantity = GetActiveCargoBay()->GetResourceQuantity(Resource, GetCompany());
+				int32 ResourceQuantity = CargoBay->GetResourceQuantity(Resource, Company);
 
 				if(ResourceQuantity > 0)
 				{
@@ -1377,7 +1393,7 @@ void UFlareSimulatedSpacecraft::LockResources()
 
 	for(auto Entry : LockMap)
 	{
-		if (!GetActiveCargoBay()->LockSlot(Entry.Key, Entry.Value, false))
+		if (!CargoBay->LockSlot(Entry.Key, Entry.Value, false))
 		{
 			FLOGV("Fail to lock a slot of %s in %s", *Entry.Key->Name.ToString(), *GetImmatriculation().ToString());
 		}
@@ -1385,7 +1401,7 @@ void UFlareSimulatedSpacecraft::LockResources()
 
 	if(IsStation())
 	{
-		GetActiveCargoBay()->HideUnlockedSlots();
+		CargoBay->HideUnlockedSlots();
 	}
 }
 
@@ -1414,7 +1430,6 @@ void UFlareSimulatedSpacecraft::ComputeConstructionCargoBaySize(int32& CargoBayS
 
 void UFlareSimulatedSpacecraft::ComputeProductionCargoBaySize(int32& CargoBaySlotCapacity, int32& CargoBayCount)
 {
-//	if(!IsUnderConstruction())
 	if(IsComplex())
 	{
 		UFlareResourceCatalog* Catalog = GetGame()->GetResourceCatalog();
@@ -1486,7 +1501,7 @@ void UFlareSimulatedSpacecraft::Upgrade()
 
 	Reload();
 
-	if(GetCompany() == Game->GetPC()->GetCompany())
+	if(Company == Game->GetPC()->GetCompany())
 	{
 		Game->GetQuestManager()->OnEvent(FFlareBundle().PutTag("start-station-construction").PutInt32("upgrade", 1));
 	}
@@ -1545,9 +1560,8 @@ void UFlareSimulatedSpacecraft::FinishConstruction()
 		Game->GetGameWorld()->ClearSpecificFactory(GetStationConstructionFactory());
 	}
 
-	Company->GetAI()->FinishedConstruction(this);
 	SpacecraftData.IsUnderConstruction = false;
-
+	Company->GetAI()->FinishedConstruction(this);
 	Reload();
 
 	if (IsShipyard())
@@ -1588,7 +1602,7 @@ void UFlareSimulatedSpacecraft::SetTrading(bool Trading, int32 TradeReason, UFla
 	{
 		SpacecraftData.IsTradingWith = NAME_None;
 		if (SpacecraftData.IsTrading
-			&& GetCompany() == GetGame()->GetPC()->GetCompany()
+			&& Company == GetGame()->GetPC()->GetCompany()
 			&& (GetCurrentTradeRoute() == NULL || GetCurrentTradeRoute()->IsPaused())
 			&& !GetCurrentFleet()->IsAutoTrading()
 			&& SpacecraftData.TradingReason != 1)
@@ -1596,14 +1610,14 @@ void UFlareSimulatedSpacecraft::SetTrading(bool Trading, int32 TradeReason, UFla
 			FFlareMenuParameterData Data;
 			Data.Spacecraft = this;
 			Game->GetPC()->Notify(LOCTEXT("TradingStateEnd", "Trading complete"),
-				FText::Format(LOCTEXT("TravelEndedFormat", "{0} finished trading in {1}"),
-					UFlareGameTools::DisplaySpacecraftName(this),
-					GetCurrentSector()->GetSectorName()),
-				FName("trading-state-end"),
-				EFlareNotification::NT_Economy,
-				NOTIFY_DEFAULT_TIMER,
-				EFlareMenu::MENU_Ship,
-				Data);
+			FText::Format(LOCTEXT("TravelEndedFormat", "{0} finished trading in {1}"),
+			UFlareGameTools::DisplaySpacecraftName(this),
+			GetCurrentSector()->GetSectorName()),
+			FName("trading-state-end"),
+			EFlareNotification::NT_Economy,
+			NOTIFY_DEFAULT_TIMER,
+			EFlareMenu::MENU_Ship,
+			Data);
 		}
 	}
 	else
@@ -1636,24 +1650,23 @@ void UFlareSimulatedSpacecraft::Repair()
 		return;
 	}
 
-	UFlareSpacecraftComponentsCatalog* Catalog = GetGame()->GetShipPartsCatalog();
-
+//	UFlareSpacecraftComponentsCatalog* Catalog = GetGame()->GetShipPartsCatalog();
 	float SpacecraftPreciseCurrentNeededFleetSupply = 0;
+
+	float TechnologyBonus = Company->IsTechnologyUnlocked(GetGame()->GetCacheSystem()->ID_TechQuickRepairs) ? 1.5f : 1.f;
+	float TechnologyBonusSecondary = Company->GetTechnologyRepairBonus();
+	TechnologyBonus += TechnologyBonusSecondary;
 
 	// List components
 	for (int32 ComponentIndex = 0; ComponentIndex < GetData().Components.Num(); ComponentIndex++)
 	{
 		FFlareSpacecraftComponentSave* ComponentData = &GetData().Components[ComponentIndex];
-		FFlareSpacecraftComponentDescription* ComponentDescription = Catalog->Get(ComponentData->ComponentIdentifier);
+		FFlareSpacecraftComponentDescription* ComponentDescription = AllComponentDescriptions[ComponentIndex];//Catalog->Get(ComponentData->ComponentIdentifier);
 
 		float DamageRatio = GetDamageSystem()->GetDamageRatio(ComponentDescription, ComponentData);
-		float TechnologyBonus = GetCompany()->IsTechnologyUnlocked("quick-repair") ? 1.5f: 1.f;
-		float TechnologyBonusSecondary = GetCompany()->GetTechnologyBonus_Float("repair-bonus");
-		TechnologyBonus += TechnologyBonusSecondary;
 
 		float ComponentMaxRepairRatio = SectorHelper::GetComponentMaxRepairRatio(ComponentDescription) * (GetSize() == EFlarePartSize::L ? 0.2f : 1.f) * TechnologyBonus;
 		float CurrentRepairRatio = FMath::Min(ComponentMaxRepairRatio, (1.f - DamageRatio));
-
 
 		SpacecraftPreciseCurrentNeededFleetSupply += CurrentRepairRatio * UFlareSimulatedSpacecraftDamageSystem::GetRepairCost(ComponentDescription);
 	}
@@ -1666,11 +1679,7 @@ void UFlareSimulatedSpacecraft::Repair()
 		for (int32 ComponentIndex = 0; ComponentIndex < GetData().Components.Num(); ComponentIndex++)
 		{
 			FFlareSpacecraftComponentSave* ComponentData = &GetData().Components[ComponentIndex];
-			FFlareSpacecraftComponentDescription* ComponentDescription = Catalog->Get(ComponentData->ComponentIdentifier);
-
-			float TechnologyBonus = GetCompany()->IsTechnologyUnlocked("quick-repair") ? 1.5f: 1.f;
-			float TechnologyBonusSecondary = GetCompany()->GetTechnologyBonus_Float("repair-bonus");
-			TechnologyBonus += TechnologyBonusSecondary;
+			FFlareSpacecraftComponentDescription* ComponentDescription = AllComponentDescriptions[ComponentIndex];//Catalog->Get(ComponentData->ComponentIdentifier);
 
 			float ComponentMaxRepairRatio = SectorHelper::GetComponentMaxRepairRatio(ComponentDescription) * (GetSize() == EFlarePartSize::L ? 0.2f : 1.f) * TechnologyBonus;
 			float ConsumedFS = GetDamageSystem()->Repair(ComponentDescription,ComponentData, MaxRepairRatio * ComponentMaxRepairRatio, SpacecraftData.RepairStock);
@@ -1690,7 +1699,7 @@ void UFlareSimulatedSpacecraft::Repair()
 
 		if(SpacecraftPreciseCurrentNeededFleetSupply > 0)
 		{
-			if(GetCompany() == GetGame()->GetPC()->GetCompany())
+			if(Company == GetGame()->GetPC()->GetCompany())
 			{
 				GetGame()->GetQuestManager()->OnEvent(FFlareBundle().PutTag("repair-end"));
 			}
@@ -1703,12 +1712,12 @@ void UFlareSimulatedSpacecraft::RecoveryRepair()
 	FLOG("AFlareGame::RecoveryRepair");
 
 	SpacecraftData.RepairStock = 0;
-	UFlareSpacecraftComponentsCatalog* Catalog = GetGame()->GetShipPartsCatalog();
+//	UFlareSpacecraftComponentsCatalog* Catalog = GetGame()->GetShipPartsCatalog();
 
 	for (int32 ComponentIndex = 0; ComponentIndex < GetData().Components.Num(); ComponentIndex++)
 	{
 		FFlareSpacecraftComponentSave* ComponentData = &GetData().Components[ComponentIndex];
-		FFlareSpacecraftComponentDescription* ComponentDescription = Catalog->Get(ComponentData->ComponentIdentifier);
+		FFlareSpacecraftComponentDescription* ComponentDescription = GetAllComponentDescriptions()[ComponentIndex];
 
 		if (ComponentDescription->Type == EFlarePartType::RCS
 				|| ComponentDescription->Type == EFlarePartType::OrbitalEngine
@@ -1765,51 +1774,53 @@ void UFlareSimulatedSpacecraft::Stabilize()
 
 void UFlareSimulatedSpacecraft::Refill()
 {
-	if(GetRefillStock() == 0 || (GetCurrentSector() && GetCurrentSector()->IsInDangerousBattle(GetCompany())))
+	if(GetRefillStock() == 0 || (GetCurrentSector() && GetCurrentSector()->IsInDangerousBattle(Company)))
 	{
 		// No refill possible
 		return;
 	}
 
-	UFlareSpacecraftComponentsCatalog* Catalog = GetGame()->GetShipPartsCatalog();
+//	UFlareSpacecraftComponentsCatalog* Catalog = GetGame()->GetShipPartsCatalog();
 	float SpacecraftPreciseCurrentNeededFleetSupply = 0;
 
+	TArray<FFlareSpacecraftComponentSave*> WeaponComponentPointers = GetWeaponComponentPointers();
+	TArray<FFlareSpacecraftComponentDescription*> WeaponComponentDescriptions = GetWeaponComponentDescriptions();
+	int32 ComponentsNum = WeaponComponentPointers.Num();
+
 	// List components
-	for (int32 ComponentIndex = 0; ComponentIndex < GetData().Components.Num(); ComponentIndex++)
+	for (int32 ComponentIndex = 0; ComponentIndex < ComponentsNum; ComponentIndex++)
 	{
-		FFlareSpacecraftComponentSave* ComponentData = &GetData().Components[ComponentIndex];
-		FFlareSpacecraftComponentDescription* ComponentDescription = Catalog->Get(ComponentData->ComponentIdentifier);
-		if(ComponentDescription->Type == EFlarePartType::Weapon)
+		FFlareSpacecraftComponentSave* ComponentData = WeaponComponentPointers[ComponentIndex];
+		FFlareSpacecraftComponentDescription* ComponentDescription = WeaponComponentDescriptions[ComponentIndex];
+
+		if (ComponentData->Weapon.FiredAmmo > 0)
 		{
 			int32 MaxAmmo = ComponentDescription->WeaponCharacteristics.AmmoCapacity;
 			int32 CurrentAmmo = MaxAmmo - ComponentData->Weapon.FiredAmmo;
-			float FillRatio = (float) CurrentAmmo / (float) MaxAmmo;
+			float FillRatio = (float)CurrentAmmo / (float)MaxAmmo;
+
 			float CurrentRefillRatio = FMath::Min(MAX_REFILL_RATIO_BY_DAY * (GetSize() == EFlarePartSize::L ? 0.2f : 1.f), (1.f - FillRatio));
 
 			SpacecraftPreciseCurrentNeededFleetSupply += CurrentRefillRatio * UFlareSimulatedSpacecraftDamageSystem::GetRefillCost(ComponentDescription);
 		}
-
 	}
 
 	if(SpacecraftPreciseCurrentNeededFleetSupply != 0)
 	{
 		float MaxRefillRatio = MAX_REFILL_RATIO_BY_DAY * (GetSize() == EFlarePartSize::L ? 0.2f : 1.f) * FMath::Min(1.f,GetRefillStock() / SpacecraftPreciseCurrentNeededFleetSupply);
 
-		for (int32 ComponentIndex = 0; ComponentIndex < GetData().Components.Num(); ComponentIndex++)
+		for (int32 ComponentIndex = 0; ComponentIndex < ComponentsNum; ComponentIndex++)
 		{
-			FFlareSpacecraftComponentSave* ComponentData = &GetData().Components[ComponentIndex];
-			FFlareSpacecraftComponentDescription* ComponentDescription = Catalog->Get(ComponentData->ComponentIdentifier);
+			FFlareSpacecraftComponentSave* ComponentData = WeaponComponentPointers[ComponentIndex];
+			FFlareSpacecraftComponentDescription* ComponentDescription = WeaponComponentDescriptions[ComponentIndex];
 
-			if(ComponentDescription->Type == EFlarePartType::Weapon)
+			float ConsumedFS = GetDamageSystem()->Refill(ComponentDescription, ComponentData, MaxRefillRatio, SpacecraftData.RefillStock);
+
+			SpacecraftData.RefillStock -= ConsumedFS;
+
+			if (GetRefillStock() <= 0)
 			{
-				float ConsumedFS = GetDamageSystem()->Refill(ComponentDescription,ComponentData, MaxRefillRatio, SpacecraftData.RefillStock);
-
-				SpacecraftData.RefillStock -= ConsumedFS;
-
-				if(GetRefillStock() <= 0)
-				{
-					break;
-				}
+				break;
 			}
 		}
 	}
@@ -1818,10 +1829,9 @@ void UFlareSimulatedSpacecraft::Refill()
 	{
 		SpacecraftData.RefillStock = 0;
 
-
 		if(SpacecraftPreciseCurrentNeededFleetSupply > 0)
 		{
-			if(GetCompany() == GetGame()->GetPC()->GetCompany())
+			if(Company == GetGame()->GetPC()->GetCompany())
 			{
 				GetGame()->GetQuestManager()->OnEvent(FFlareBundle().PutTag("refill-end"));
 			}
@@ -1969,7 +1979,7 @@ bool UFlareSimulatedSpacecraft::TryCapture(UFlareCompany* OtherCompany, int32 *C
 	}
 
 //	FLOGV("UFlareSimulatedSpacecraft::TryCapture %d capture points after modifications", *CapturePoint);
-
+/*
 	if(SpacecraftData.CapturePoints.Contains(CompanyIdentifier)){
 		SpacecraftData.CapturePoints[CompanyIdentifier] = CurrentCapturePoint;
 	}
@@ -1977,6 +1987,9 @@ bool UFlareSimulatedSpacecraft::TryCapture(UFlareCompany* OtherCompany, int32 *C
 	{
 		SpacecraftData.CapturePoints.Add(CompanyIdentifier, CurrentCapturePoint);
 	}
+*/
+
+	SpacecraftData.CapturePoints.Emplace(CompanyIdentifier, CurrentCapturePoint);
 
 	if (CurrentCapturePoint >= CaptureThreshold)
 	{
@@ -1989,18 +2002,17 @@ bool UFlareSimulatedSpacecraft::TryCapture(UFlareCompany* OtherCompany, int32 *C
 
 bool UFlareSimulatedSpacecraft::UpgradePart(FFlareSpacecraftComponentDescription* NewPartDesc, int32 WeaponGroupIndex)
 {
-	UFlareSpacecraftComponentsCatalog* Catalog = Game->GetPC()->GetGame()->GetShipPartsCatalog();
+//	UFlareSpacecraftComponentsCatalog* Catalog = Game->GetPC()->GetGame()->GetShipPartsCatalog();
 	int32 TransactionCost = 0;
 
 	// Update all components
 	for (int32 i = 0; i < SpacecraftData.Components.Num(); i++)
 	{
 		bool UpdatePart = false;
-		FFlareSpacecraftComponentDescription* ComponentDescription = Catalog->Get(SpacecraftData.Components[i].ComponentIdentifier);
+		FFlareSpacecraftComponentDescription* ComponentDescription = AllComponentDescriptions[i];//Catalog->Get(SpacecraftData.Components[i].ComponentIdentifier);
 
 		if (ComponentDescription->Type == NewPartDesc->Type)
 		{
-
 			// For a weapon, check if this slot belongs to the current group
 			if (ComponentDescription->Type == EFlarePartType::Weapon)
 			{
@@ -2020,7 +2032,7 @@ bool UFlareSimulatedSpacecraft::UpgradePart(FFlareSpacecraftComponentDescription
 			if(TransactionCost == 0)
 			{
 				TransactionCost = GetUpgradeCost(NewPartDesc, ComponentDescription);
-				if(TransactionCost > GetCompany()->GetMoney())
+				if(TransactionCost > Company->GetMoney())
 				{
 					// Cannot afford upgrade
 					return false;
@@ -2036,7 +2048,7 @@ bool UFlareSimulatedSpacecraft::UpgradePart(FFlareSpacecraftComponentDescription
 	UFlareSimulatedSector* Sector = GetCurrentSector();
 	if (TransactionCost > 0)
 	{
-		GetCompany()->TakeMoney(TransactionCost, false, FFlareTransactionLogEntry::LogUpgradeShipPart(this));
+		Company->TakeMoney(TransactionCost, false, FFlareTransactionLogEntry::LogUpgradeShipPart(this));
 		if (Sector)
 		{
 			Sector->GetPeople()->Pay(TransactionCost);
@@ -2044,7 +2056,7 @@ bool UFlareSimulatedSpacecraft::UpgradePart(FFlareSpacecraftComponentDescription
 	}
 	else
 	{
-		GetCompany()->GiveMoney(FMath::Abs(TransactionCost), FFlareTransactionLogEntry::LogUpgradeShipPart(this));
+		Company->GiveMoney(FMath::Abs(TransactionCost), FFlareTransactionLogEntry::LogUpgradeShipPart(this));
 		if (Sector)
 		{
 			Sector->GetPeople()->TakeMoney(FMath::Abs(TransactionCost));
@@ -2058,14 +2070,14 @@ bool UFlareSimulatedSpacecraft::UpgradePart(FFlareSpacecraftComponentDescription
 
 void UFlareSimulatedSpacecraft::UpdateEngineAcceleration()
 {
-	UFlareSpacecraftComponentsCatalog* Catalog = Game->GetPC()->GetGame()->GetShipPartsCatalog();
+//	UFlareSpacecraftComponentsCatalog* Catalog = Game->GetPC()->GetGame()->GetShipPartsCatalog();
 	float OldEngineAccelerationPower = EngineAccelerationPower;
 	float ShipEnginePower = 0;
 
 	int32 RCSCapableOfMainEngineThrust = GetDescription()->RCSCapableOfMainEngineThrust;
 	for (int32 i = 0; i < GetData().Components.Num(); i++)
 	{
-		FFlareSpacecraftComponentDescription* ComponentDescription = Catalog->Get(GetData().Components[i].ComponentIdentifier);
+		FFlareSpacecraftComponentDescription* ComponentDescription = AllComponentDescriptions[i];//Catalog->Get(GetData().Components[i].ComponentIdentifier);
 		if (ComponentDescription->Type == EFlarePartType::RCS)
 		{
 			if (RCSCapableOfMainEngineThrust > 0)
@@ -2103,17 +2115,16 @@ void UFlareSimulatedSpacecraft::UpdateEngineAcceleration()
 
 FFlareSpacecraftComponentDescription* UFlareSimulatedSpacecraft::GetCurrentPart(EFlarePartType::Type Type, int32 WeaponGroupIndex)
 {
-	UFlareSpacecraftComponentsCatalog* Catalog = Game->GetPC()->GetGame()->GetShipPartsCatalog();
+//	UFlareSpacecraftComponentsCatalog* Catalog = Game->GetPC()->GetGame()->GetShipPartsCatalog();
 
 	// Update all components
 	for (int32 i = 0; i < SpacecraftData.Components.Num(); i++)
 	{
 		bool UpdatePart = false;
-		FFlareSpacecraftComponentDescription* ComponentDescription = Catalog->Get(SpacecraftData.Components[i].ComponentIdentifier);
+		FFlareSpacecraftComponentDescription* ComponentDescription = AllComponentDescriptions[i];//Catalog->Get(SpacecraftData.Components[i].ComponentIdentifier);
 
 		if (ComponentDescription->Type == Type)
 		{
-
 			// For a weapon, check if this slot belongs to the current group
 			if (ComponentDescription->Type == EFlarePartType::Weapon)
 			{
@@ -2145,23 +2156,24 @@ void UFlareSimulatedSpacecraft::OrderRefillStock(float FS)
 
 bool UFlareSimulatedSpacecraft::NeedRefill()
 {
-	UFlareSpacecraftComponentsCatalog* Catalog = GetGame()->GetShipPartsCatalog();
+//	UFlareSpacecraftComponentsCatalog* Catalog = GetGame()->GetShipPartsCatalog();
+
+	int32 ComponentsNum = WeaponComponentPointers.Num();
 
 	// List components
-	for (int32 ComponentIndex = 0; ComponentIndex < GetData().Components.Num(); ComponentIndex++)
+	for (int32 ComponentIndex = 0; ComponentIndex < ComponentsNum; ComponentIndex++)
 	{
-		FFlareSpacecraftComponentSave* ComponentData = &GetData().Components[ComponentIndex];
-		FFlareSpacecraftComponentDescription* ComponentDescription = Catalog->Get(ComponentData->ComponentIdentifier);
+		FFlareSpacecraftComponentSave* ComponentData = WeaponComponentPointers[ComponentIndex];
+		FFlareSpacecraftComponentDescription* ComponentDescription = WeaponComponentDescriptions[ComponentIndex];
 
-		if(ComponentDescription->Type == EFlarePartType::Weapon)
+		if (ComponentData->Weapon.FiredAmmo > 0)
 		{
-
 			int32 MaxAmmo = ComponentDescription->WeaponCharacteristics.AmmoCapacity;
 			int32 CurrentAmmo = MaxAmmo - ComponentData->Weapon.FiredAmmo;
 
-			float FillRatio = (float) CurrentAmmo / (float) MaxAmmo;
+			float FillRatio = (float)CurrentAmmo / (float)MaxAmmo;
 
-			if(FillRatio < 1.f)
+			if (FillRatio < 1.f)
 			{
 				return true;
 			}
@@ -2195,6 +2207,7 @@ bool UFlareSimulatedSpacecraft::IsShipyard()
 	return false;
 }
 
+//Transfers
 void UFlareSimulatedSpacecraft::AutoFillConstructionCargoBay()
 {
 	UFlareCargoBay* Construction = GetConstructionCargoBay();
@@ -2204,9 +2217,52 @@ void UFlareSimulatedSpacecraft::AutoFillConstructionCargoBay()
 	{
 		if(Slot.Lock == EFlareResourceLock::Input)
 		{
-			int32 MissingQuantity = Construction->GetFreeSpaceForResource(Slot.Resource, GetCompany(), true);
-			int32 TakenQuantity = Production->TakeResources(Slot.Resource, MissingQuantity, GetCompany());
-			Construction->GiveResources(Slot.Resource, TakenQuantity, GetCompany());
+			int32 MissingQuantity = Construction->GetFreeSpaceForResource(Slot.Resource, Company, true);
+			int32 TakenQuantity = Production->TakeResources(Slot.Resource, MissingQuantity, Company);
+			Construction->GiveResources(Slot.Resource, TakenQuantity, Company);
+		}
+	}
+}
+
+void UFlareSimulatedSpacecraft::AutoFillProductionExcessConCargoBay()
+{
+	if (GetLevel() >= GetMaxLevel())
+	{
+		if (IsComplex())
+		{
+			bool FoundChildNotMaxLevel = false;
+			for (UFlareSimulatedSpacecraft* Child : ComplexChildren)
+			{
+				if (Child->GetLevel() < Child->GetMaxLevel())
+				{
+					FoundChildNotMaxLevel = true;
+					break;
+				}
+			}
+
+			if (FoundChildNotMaxLevel)
+			{
+				return;
+			}
+		}
+
+		UFlareCargoBay* Construction = GetConstructionCargoBay();
+		UFlareCargoBay* Production = GetProductionCargoBay();
+
+		for (FFlareCargo& Slot : Construction->GetSlots())
+		{
+			FFlareResourceDescription* SlotResource = Slot.Resource;
+			if (SlotResource)
+			{
+//				FLOG("UFlareSimulatedSpacecraft::AutoFillProductionExcessConCargoBay");
+
+				int32 RemainingQuantity = Construction->GetResourceQuantitySimple(SlotResource);
+				int32 TakenQuantity = Construction->TakeResources(SlotResource, RemainingQuantity, Company, 0, true);
+				int32 GivenResources = Production->GiveResources(SlotResource, TakenQuantity, Company, 0, true, EFlareResourceRestriction::BuyersOnly, EFlareResourceLock::Overflow);
+
+//				FLOGV("UFlareSimulatedSpacecraft::AutoFillProductionExcessConCargoBay : %s is transferring %s to production bay. RemainingQuantity = %d, TakenQuantity = %d, GivenResources = %d",
+//					*GetImmatriculation().ToString(), *SlotResource->Name.ToString(), RemainingQuantity, TakenQuantity, GivenResources);
+			}
 		}
 	}
 }
@@ -2279,12 +2335,13 @@ TMap<FFlareResourceDescription*, int32> UFlareSimulatedSpacecraft::ComputeScrapR
 
 bool UFlareSimulatedSpacecraft::IsComplex() const
 {
-	return GetDescription()->IsComplex();
+	return GetDescription()->IsComplex(GetGame()->GetCacheSystem()->ID_StationComplex);
 }
 
 bool UFlareSimulatedSpacecraft::IsComplexElement() const
 {
-	return (GetDataConst().AttachComplexStationName != NAME_None);
+	return Cached_IsComplexElement;
+//	return (GetDataConst().AttachComplexStationName != NAME_None);
 }
 
 void UFlareSimulatedSpacecraft::RegisterComplexMaster(UFlareSimulatedSpacecraft* master)
@@ -2359,7 +2416,7 @@ bool UFlareSimulatedSpacecraft::ShipyardOrderShip(UFlareCompany* OrderCompany, F
 
 	uint32 ShipPrice = 0;
 
-	if(GetCompany() != OrderCompany)
+	if(Company != OrderCompany)
 	{
 		ShipPrice = UFlareGameTools::ComputeSpacecraftPrice(ShipIdentifier, GetCurrentSector(), true, false, true, OrderCompany,GetCompany());
 		if(!OrderCompany->TakeMoney(ShipPrice, false, FFlareTransactionLogEntry::LogOrderShip(this, ShipIdentifier)))
@@ -2420,7 +2477,7 @@ bool UFlareSimulatedSpacecraft::ShipyardOrderShip(UFlareCompany* OrderCompany, F
 			break;
 		}
 
-		GetCompany()->GivePlayerReputation(ShipPrice / RepDivisor);
+		Company->GivePlayerReputation(ShipPrice / RepDivisor);
 	}
 	return true;
 }
@@ -2463,7 +2520,7 @@ void UFlareSimulatedSpacecraft::CancelShipyardOrder(int32 OrderIndex)
 			RepDivisor = 250000;
 			break;
 		}
-		GetCompany()->GivePlayerReputation(-Order.AdvancePayment / RepDivisor);
+		Company->GivePlayerReputation(-Order.AdvancePayment / RepDivisor);
 	}
 
 	GetShipyardOrderQueue().RemoveAt(OrderIndex);
@@ -2535,10 +2592,11 @@ FText UFlareSimulatedSpacecraft::GetNextShipyardOrderStatus()
 
 	FText MissingResources;
 	int32 MissingResourcesCount = 0;
+	UFlareCargoBay* ActiveCargoBay = GetActiveCargoBay();
 
 	for(const FFlareFactoryResource& InputResource : ProductionData.InputResources)
 	{
-		int32 AvailableQuantity = GetActiveCargoBay()->GetResourceQuantity(&InputResource.Resource->Data, GetCompany());
+		int32 AvailableQuantity = ActiveCargoBay->GetResourceQuantity(&InputResource.Resource->Data, GetCompany());
 		if(InputResource.Quantity > AvailableQuantity)
 		{
 			// Not enought resource
@@ -2588,8 +2646,9 @@ void UFlareSimulatedSpacecraft::UpdateShipyardProduction()
 	}
 
 	TArray<int32> IndexToRemove;
-
 	int32 Index = 0;
+	UFlareCargoBay* ActiveCargoBay = GetActiveCargoBay();
+
 	for (FFlareShipyardOrderSave& Order : GetShipyardOrderQueue())
 	{
 #if 0
@@ -2598,7 +2657,7 @@ void UFlareSimulatedSpacecraft::UpdateShipyardProduction()
 		bool MissingResource = false;
 		const FFlareProductionData& ProductionData = GetCycleDataForShipClass(Order.ShipClass);
 
-		float ShipyardfabricationBonus = ShipyardfabricationBonus = GetCompany()->GetTechnologyBonus_Float("shipyard-fabrication-bonus");
+		float ShipyardfabricationBonus = ShipyardfabricationBonus = Company->GetTechnologyShipyardFabBonus();
 		float TotalResourceMargin = 1;
 		if (ShipyardfabricationBonus)
 		{
@@ -2608,7 +2667,7 @@ void UFlareSimulatedSpacecraft::UpdateShipyardProduction()
 		for (const FFlareFactoryResource& InputResource : ProductionData.InputResources)
 		{
 			int32 AdjustedQuantity = InputResource.Quantity * TotalResourceMargin;
-			if(AdjustedQuantity > GetActiveCargoBay()->GetResourceQuantity(&InputResource.Resource->Data, GetCompany()))
+			if(AdjustedQuantity > ActiveCargoBay->GetResourceQuantity(&InputResource.Resource->Data, Company))
 			{
 				// Missing resources, stop all
 				MissingResource = true;
@@ -2656,20 +2715,20 @@ bool UFlareSimulatedSpacecraft::CanOrder(const FFlareSpacecraftDescription* Ship
 #endif // DEBUG_CANORDER
 	}
 
-	if(GetCompany()->GetWarState(OrderCompany) == EFlareHostility::Hostile)
+	if(Company->GetWarState(OrderCompany) == EFlareHostility::Hostile)
 	{
 		// Not possible to buy ship to hostile company
 #ifdef DEBUG_CANORDER
 		FLOGV("UFlareSimulatedSpacecraft::CanOrder : '%s' is hostile with ",
 		*OrderCompany->GetCompanyName().ToString(),
-		*GetCompany()->GetCompanyName().ToString());
+		*Company->GetCompanyName().ToString());
 #endif
 		return false;
 	}
 
 	UFlareCompany* PlayerCompany = Game->GetPC()->GetCompany();
 
-	if (OrderCompany != GetCompany())
+	if (OrderCompany != Company)
 	{
 		if (!IsAllowExternalOrder())
 		{
@@ -2681,7 +2740,7 @@ bool UFlareSimulatedSpacecraft::CanOrder(const FFlareSpacecraftDescription* Ship
 
 		//TODO: make it apply to the AI if they have logic for disabling/enabling their own ship configuration settings
 		FFlareSpacecraftSave SpaceCraftData = GetData();
-		if (GetCompany() == PlayerCompany && !IsInExternalOrdersArray(ShipDescription))
+		if (Company == PlayerCompany && !IsInExternalOrdersArray(ShipDescription))
 		{
 #ifdef DEBUG_CANORDER
 			FLOGV("UFlareSimulatedSpacecraft::CanOrder : Tried to order '%s' from player. Denied for ShipyardOrderExternalConfig",
@@ -2721,7 +2780,7 @@ bool UFlareSimulatedSpacecraft::CanOrder(const FFlareSpacecraftDescription* Ship
 		{
 #ifdef DEBUG_CANORDER
 			FLOGV("UFlareSimulatedSpacecraft::CanOrder : BuyableCompany set, not included. %s - %s Denied.",
-			*GetCompany()->GetCompanyName().ToString(),
+			*Company->GetCompanyName().ToString(),
 			*OrderCompany->GetDescription()->ShortName.ToString());
 #endif
 			return false;
@@ -2735,19 +2794,19 @@ bool UFlareSimulatedSpacecraft::CanOrder(const FFlareSpacecraftDescription* Ship
 		{
 #ifdef DEBUG_CANORDER
 			FLOGV("UFlareSimulatedSpacecraft::CanOrder : BuildableCompany set, not included. %s - %s Denied.",
-			*GetCompany()->GetCompanyName().ToString(),
+			*Company->GetCompanyName().ToString(),
 			*OrderCompany->GetDescription()->ShortName.ToString());
 #endif
 			return false;
 		}
 	}
 
-	if (!GetCompany()->IsTechnologyUnlockedShip(ShipDescription))
+	if (!Company->IsTechnologyUnlockedShip(ShipDescription))
 	{
 #ifdef DEBUG_CANORDER
 		FLOGV("UFlareSimulatedSpacecraft::CanOrder : '%s' required technology not unlocked by '%s'. Denied.",
 		*ShipDescription->Identifier.ToString(),
-		*GetCompany()->GetCompanyName().ToString());
+		*Company->GetCompanyName().ToString());
 #endif
 		return false;
 	}
@@ -2843,11 +2902,13 @@ bool UFlareSimulatedSpacecraft::IsShipyardMissingResources()
 	bool MissingResource = false;
 	if(GetShipyardOrderQueue().Num() > 0)
 	{
+		UFlareCargoBay* ActiveCargoBay = GetActiveCargoBay();
+
 		const FFlareProductionData& ProductionData = GetCycleDataForShipClass(GetShipyardOrderQueue()[0].ShipClass);
 
 		for (const FFlareFactoryResource& InputResource : ProductionData.InputResources)
 		{
-			if(InputResource.Quantity > GetActiveCargoBay()->GetResourceQuantity(&InputResource.Resource->Data, GetCompany()))
+			if(InputResource.Quantity > ActiveCargoBay->GetResourceQuantity(&InputResource.Resource->Data, Company))
 			{
 				// Missing resources, stop all
 				MissingResource = true;
@@ -2965,7 +3026,7 @@ FText UFlareSimulatedSpacecraft::GetShipCost(FName ShipIdentifier)
 	}
 
 	// Cycle cost in resources
-	float ShipyardfabricationBonus = GetCompany()->GetTechnologyBonus_Float("shipyard-fabrication-bonus");
+	float ShipyardfabricationBonus = GetCompany()->GetTechnologyShipyardFabBonus();
 
 	for (int ResourceIndex = 0; ResourceIndex < ProductionData.InputResources.Num(); ResourceIndex++)
 	{
@@ -2991,7 +3052,8 @@ FText UFlareSimulatedSpacecraft::GetShipResourceCost(FFlareSpacecraftDescription
 
 	const FFlareProductionData& ProductionData = Description->CycleCost;
 	// Cycle cost in resources
-	float ShipyardfabricationBonus = GetCompany()->GetTechnologyBonus_Float("shipyard-fabrication-bonus");
+	float ShipyardfabricationBonus = Company->GetTechnologyShipyardFabBonus();
+	UFlareCargoBay* ActiveCargoBay = GetActiveCargoBay();
 
 	for (int ResourceIndex = 0; ResourceIndex < ProductionData.InputResources.Num(); ResourceIndex++)
 	{
@@ -3003,7 +3065,7 @@ FText UFlareSimulatedSpacecraft::GetShipResourceCost(FFlareSpacecraftDescription
 			Quantity *= (1 - ShipyardfabricationBonus);
 		}
 
-		int32 StorageQuanty = GetActiveCargoBay()->GetResourceQuantitySimple(&FactoryResource->Resource->Data);
+		int32 StorageQuanty = ActiveCargoBay->GetResourceQuantitySimple(&FactoryResource->Resource->Data);
 
 		if (StorageQuanty < Quantity)
 		{
@@ -3082,7 +3144,7 @@ void UFlareSimulatedSpacecraft::SetAllowExternalOrder(bool Allow)
 			int Index = 0;
 			for (FFlareShipyardOrderSave& Order : GetShipyardOrderQueue())
 			{
-				if(Order.Company != GetCompany()->GetIdentifier())
+				if(Order.Company != Company->GetIdentifier())
 				{
 					CancelShipyardOrder(Index);
 					ok = false;
@@ -3118,7 +3180,7 @@ void UFlareSimulatedSpacecraft::AddRemoveExternalOrderArray(const FName ShipDesc
 			int Index = 0;
 			for (FFlareShipyardOrderSave& Order : GetShipyardOrderQueue())
 			{
-				if (Order.Company != GetCompany()->GetIdentifier())
+				if (Order.Company != Company->GetIdentifier())
 				{
 					if (ShipDescription == Order.ShipClass)
 					{
@@ -3175,7 +3237,7 @@ int64 UFlareSimulatedSpacecraft::GetUpgradeCost(FFlareSpacecraftComponentDescrip
 
 bool UFlareSimulatedSpacecraft::CanUpgrade(EFlarePartType::Type Type)
 {
-	if(!GetCurrentSector()->CanUpgrade(GetCompany()))
+	if(!GetCurrentSector()->CanUpgrade(Company))
 	{
 		return false;
 	}
@@ -3218,7 +3280,7 @@ bool UFlareSimulatedSpacecraft::HasCapability(EFlareSpacecraftCapability::Type C
 
 EFlareHostility::Type UFlareSimulatedSpacecraft::GetPlayerWarState() const
 {
-	return GetCompany()->GetPlayerWarState();
+	return Company->GetPlayerWarState();
 }
 
 TArray<UFlareFactory*>& UFlareSimulatedSpacecraft::GetAllFactories()
@@ -3379,11 +3441,10 @@ int32 UFlareSimulatedSpacecraft::GetCapturePointThreshold() const
 		}
 	}
 
-	if (GetCompany()->IsTechnologyUnlocked("negociations"))
+	if (Company->IsTechnologyUnlocked(GetGame()->GetCacheSystem()->ID_TechNegociations))
 	{
 		BaseCapturePoint *= 1.25;
 	}
-
 
 	float DamageRatio = GetDamageSystem()->GetGlobalDamageRatio();
 	float CaptureRatio = CAPTURE_THRESOLD_MIN;
@@ -3413,6 +3474,11 @@ float UFlareSimulatedSpacecraft::GetStationEfficiency(UFlareSimulatedSpacecraft*
 	if(IsComplexElement())
 	{
 		return GetComplexMaster()->GetStationEfficiency(this);
+	}
+
+	if (Cached_Efficiency != -100)
+	{
+		return Cached_Efficiency;
 	}
 
 	// if Damage ratio == 1 ,  efficiency == 1
@@ -3463,6 +3529,8 @@ float UFlareSimulatedSpacecraft::GetStationEfficiency(UFlareSimulatedSpacecraft*
 			Efficiency = Efficiency - 0.10f;
 		}
 	}
+
+	Cached_Efficiency = Efficiency;
 	return Efficiency;
 }
 
@@ -3549,7 +3617,7 @@ bool UFlareSimulatedSpacecraft::IsInCompanyTransactionSource()
 {
 	if (!HasCompanyTransactionSource)
 	{
-		HasCompanyTransactionSource = GetCompany()->IsShipInTransactionSources(this);
+		HasCompanyTransactionSource = Company->IsShipInTransactionSources(this);
 	}
 
 	return HasCompanyTransactionSource;
@@ -3578,25 +3646,38 @@ int32 UFlareSimulatedSpacecraft::GetRepairDuration()
 		return 0;
 	}
 
-	UFlareSpacecraftComponentsCatalog* Catalog = GetGame()->GetShipPartsCatalog();
+//	UFlareSpacecraftComponentsCatalog* Catalog = GetGame()->GetShipPartsCatalog();
 
 	float SpacecraftPreciseCurrentNeededFleetSupply = 0;
+
+	float TechnologyBonus = Company->IsTechnologyUnlocked(GetGame()->GetCacheSystem()->ID_TechQuickRepairs) ? 1.5f : 1.f;
+	float TechnologyBonusSecondary = Company->GetTechnologyRepairBonus();
+	TechnologyBonus += TechnologyBonusSecondary;
+
+	float SpacecraftSizeFactor;
+	if (GetSize() == EFlarePartSize::L)
+	{
+		SpacecraftSizeFactor = 0.2f;
+	}
+	else
+	{
+		SpacecraftSizeFactor = 1.f;
+	}
 
 	// List components
 	for (int32 ComponentIndex = 0; ComponentIndex < GetData().Components.Num(); ComponentIndex++)
 	{
 		FFlareSpacecraftComponentSave* ComponentData = &GetData().Components[ComponentIndex];
-		FFlareSpacecraftComponentDescription* ComponentDescription = Catalog->Get(ComponentData->ComponentIdentifier);
+		FFlareSpacecraftComponentDescription* ComponentDescription = AllComponentDescriptions[ComponentIndex];//Catalog->Get(ComponentData->ComponentIdentifier);
 
 		float DamageRatio = GetDamageSystem()->GetDamageRatio(ComponentDescription, ComponentData);
-		float TechnologyBonus = GetCompany()->IsTechnologyUnlocked("quick-repair") ? 1.5f: 1.f;
-		float TechnologyBonusSecondary = GetCompany()->GetTechnologyBonus_Float("repair-bonus");
-		TechnologyBonus += TechnologyBonusSecondary;
+		if (DamageRatio == 1.f)
+		{
+			continue;
+		}
 
-		float ComponentMaxRepairRatio = SectorHelper::GetComponentMaxRepairRatio(ComponentDescription) * (GetSize() == EFlarePartSize::L ? 0.2f : 1.f) * TechnologyBonus;
+		float ComponentMaxRepairRatio = SectorHelper::GetComponentMaxRepairRatio(ComponentDescription) * (SpacecraftSizeFactor * TechnologyBonus);
 		float CurrentRepairRatio = FMath::Min(ComponentMaxRepairRatio, (1.f - DamageRatio));
-
-
 		SpacecraftPreciseCurrentNeededFleetSupply += CurrentRepairRatio * UFlareSimulatedSpacecraftDamageSystem::GetRepairCost(ComponentDescription);
 	}
 
@@ -3609,16 +3690,15 @@ int32 UFlareSimulatedSpacecraft::GetRepairDuration()
 		for (int32 ComponentIndex = 0; ComponentIndex < GetData().Components.Num(); ComponentIndex++)
 		{
 			FFlareSpacecraftComponentSave* ComponentData = &GetData().Components[ComponentIndex];
-			FFlareSpacecraftComponentDescription* ComponentDescription = Catalog->Get(ComponentData->ComponentIdentifier);
+			FFlareSpacecraftComponentDescription* ComponentDescription = AllComponentDescriptions[ComponentIndex];//Catalog->Get(ComponentData->ComponentIdentifier);
 
-			float TechnologyBonus = GetCompany()->IsTechnologyUnlocked("quick-repair") ? 1.5f: 1.f;
-			float TechnologyBonusSecondary = GetCompany()->GetTechnologyBonus_Float("repair-bonus");
-			TechnologyBonus += TechnologyBonusSecondary;
-
-			float ComponentMaxRepairRatio = SectorHelper::GetComponentMaxRepairRatio(ComponentDescription) * (GetSize() == EFlarePartSize::L ? 0.2f : 1.f) * TechnologyBonus;
 			float DamageRatio = GetDamageSystem()->GetDamageRatio(ComponentDescription, ComponentData);
+			if (DamageRatio == 1.f)
+			{
+				continue;
+			}
 
-
+			float ComponentMaxRepairRatio = SectorHelper::GetComponentMaxRepairRatio(ComponentDescription) * (SpacecraftSizeFactor * TechnologyBonus);
 			float RepairRatio = MaxRepairRatio * (1.f - DamageRatio);
 
 			float PartRepairDurationFloat = RepairRatio/ComponentMaxRepairRatio;
@@ -3636,26 +3716,39 @@ int32 UFlareSimulatedSpacecraft::GetRepairDuration()
 
 int32 UFlareSimulatedSpacecraft::GetRefillDuration()
 {
-	if(GetRefillStock() == 0 || (GetCurrentSector() && GetCurrentSector()->IsInDangerousBattle(GetCompany())))
+	if(GetRefillStock() == 0 || (GetCurrentSector() && GetCurrentSector()->IsInDangerousBattle(Company)))
 	{
 		// No refill possible
 		return 0;
 	}
 
-	UFlareSpacecraftComponentsCatalog* Catalog = GetGame()->GetShipPartsCatalog();
+	float SpacecraftSizeFactor;
+	if (GetSize() == EFlarePartSize::L)
+	{
+		SpacecraftSizeFactor = 0.2f;
+	}
+	else
+	{
+		SpacecraftSizeFactor = 1.f;
+	}
+
+//	UFlareSpacecraftComponentsCatalog* Catalog = GetGame()->GetShipPartsCatalog();
 	float SpacecraftPreciseCurrentNeededFleetSupply = 0;
 
+	int32 ComponentsNum = WeaponComponentPointers.Num();
+
 	// List components
-	for (int32 ComponentIndex = 0; ComponentIndex < GetData().Components.Num(); ComponentIndex++)
+	for (int32 ComponentIndex = 0; ComponentIndex < ComponentsNum; ComponentIndex++)
 	{
-		FFlareSpacecraftComponentSave* ComponentData = &GetData().Components[ComponentIndex];
-		FFlareSpacecraftComponentDescription* ComponentDescription = Catalog->Get(ComponentData->ComponentIdentifier);
-		if(ComponentDescription->Type == EFlarePartType::Weapon)
+		FFlareSpacecraftComponentSave* ComponentData = WeaponComponentPointers[ComponentIndex];
+		FFlareSpacecraftComponentDescription* ComponentDescription = WeaponComponentDescriptions[ComponentIndex];
+
+		if(ComponentData->Weapon.FiredAmmo > 0)
 		{
 			int32 MaxAmmo = ComponentDescription->WeaponCharacteristics.AmmoCapacity;
 			int32 CurrentAmmo = MaxAmmo - ComponentData->Weapon.FiredAmmo;
 			float FillRatio = (float) CurrentAmmo / (float) MaxAmmo;
-			float CurrentRefillRatio = FMath::Min(MAX_REFILL_RATIO_BY_DAY * (GetSize() == EFlarePartSize::L ? 0.2f : 1.f), (1.f - FillRatio));
+			float CurrentRefillRatio = FMath::Min(MAX_REFILL_RATIO_BY_DAY * SpacecraftSizeFactor, (1.f - FillRatio));
 
 			SpacecraftPreciseCurrentNeededFleetSupply += CurrentRefillRatio * UFlareSimulatedSpacecraftDamageSystem::GetRefillCost(ComponentDescription);
 		}
@@ -3668,18 +3761,18 @@ int32 UFlareSimulatedSpacecraft::GetRefillDuration()
 	{
 		float MaxRefillRatio = FMath::Min(1.f,GetRefillStock() / SpacecraftPreciseCurrentNeededFleetSupply);
 
-		for (int32 ComponentIndex = 0; ComponentIndex < GetData().Components.Num(); ComponentIndex++)
+		// List components
+		for (int32 ComponentIndex = 0; ComponentIndex < ComponentsNum; ComponentIndex++)
 		{
-			FFlareSpacecraftComponentSave* ComponentData = &GetData().Components[ComponentIndex];
-			FFlareSpacecraftComponentDescription* ComponentDescription = Catalog->Get(ComponentData->ComponentIdentifier);
+			FFlareSpacecraftComponentSave* ComponentData = WeaponComponentPointers[ComponentIndex];
+			FFlareSpacecraftComponentDescription* ComponentDescription = WeaponComponentDescriptions[ComponentIndex];
 
-			if(ComponentDescription->Type == EFlarePartType::Weapon)
+			if(ComponentData->Weapon.FiredAmmo > 0)
 			{
 				int32 MaxAmmo = ComponentDescription->WeaponCharacteristics.AmmoCapacity;
 				int32 CurrentAmmo = MaxAmmo - ComponentData->Weapon.FiredAmmo;
 				float FillRatio = (float) CurrentAmmo / (float) MaxAmmo;
 				float RefillRatio = MaxRefillRatio * (1.f - FillRatio);
-
 
 				int32 PartRefillDuration = FMath::CeilToInt(RefillRatio/(MAX_REFILL_RATIO_BY_DAY * (GetSize() == EFlarePartSize::L ? 0.2f : 1.f)));
 
@@ -3727,7 +3820,7 @@ bool UFlareSimulatedSpacecraft::IsResponsible(EFlareDamage::Type DamageType)
 	UFlareSimulatedSpacecraft* PlayerShip = GetGame()->GetPC()->GetPlayerShip();
 	if (this != PlayerShip)
 	{
-		if (GetCompany() == PlayerShip->GetCompany())
+		if (Company == PlayerShip->GetCompany())
 		{
 			EFlareCombatGroup::Type CombatGroup;
 			if (GetSize() == EFlarePartSize::L)
@@ -3739,7 +3832,7 @@ bool UFlareSimulatedSpacecraft::IsResponsible(EFlareDamage::Type DamageType)
 				CombatGroup = EFlareCombatGroup::Fighters;
 			}
 
-			EFlareCombatTactic::Type CurrentTactic = GetCompany()->GetTacticManager()->GetCurrentTacticForShipGroup(CombatGroup);
+			EFlareCombatTactic::Type CurrentTactic = Company->GetTacticManager()->GetCurrentTacticForShipGroup(CombatGroup);
 			if (CurrentTactic == EFlareCombatTactic::DestroyCivilians || CurrentTactic == EFlareCombatTactic::DestroyMilitary)
 			{
 				return true;
@@ -3822,13 +3915,13 @@ bool UFlareSimulatedSpacecraft::IsPlayerHostile() const
 
 bool UFlareSimulatedSpacecraft::IsHostile(UFlareCompany* OtherCompany, bool UseCache) const
 {
-	if(GetCompany() == OtherCompany)
+	if(Company == OtherCompany)
 	{
 		return false;
 	}
 
 
-	if(GetCompany()->IsPlayerCompany())
+	if(Company->IsPlayerCompany())
 	{
 		// Is player ship hostile ?
 
@@ -3843,7 +3936,7 @@ bool UFlareSimulatedSpacecraft::IsHostile(UFlareCompany* OtherCompany, bool UseC
 	{
 		// Is non player ship hostile to player ?
 		if(IsMilitary() && Game->GetQuestManager() &&
-			Game->GetQuestManager()->IsUnderMilitaryContract(GetCurrentSector(), GetCompany(), UseCache))
+			Game->GetQuestManager()->IsUnderMilitaryContract(GetCurrentSector(), Company, UseCache))
 		{
 			return true;
 		}
@@ -3854,7 +3947,7 @@ bool UFlareSimulatedSpacecraft::IsHostile(UFlareCompany* OtherCompany, bool UseC
 		}
 	}
 
-	return GetCompany()->GetWarState(OtherCompany) == EFlareHostility::Hostile;
+	return Company->GetWarState(OtherCompany) == EFlareHostility::Hostile;
 }
 
 #undef LOCTEXT_NAMESPACE

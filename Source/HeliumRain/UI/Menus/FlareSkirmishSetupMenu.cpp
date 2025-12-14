@@ -1924,7 +1924,7 @@ void SFlareSkirmishSetupMenu::SetOrderDefaults(TSharedPtr<FFlareSkirmishSpacecra
 			}
 			else
 			{
-				Order->WeaponTypes.Add(FName("weapon-eradicator"));
+				Order->WeaponTypes.Add(MenuManager->GetGame()->GetCacheSystem()->ID_WeaponEradicator);
 			}
 		}
 	}
@@ -1941,7 +1941,7 @@ void SFlareSkirmishSetupMenu::SetOrderDefaults(TSharedPtr<FFlareSkirmishSpacecra
 			}
 			else
 			{
-				Order->WeaponTypes.Add(FName("weapon-artemis"));
+				Order->WeaponTypes.Add(MenuManager->GetGame()->GetCacheSystem()->ID_WeaponArtemis);
 			}
 		}
 	}

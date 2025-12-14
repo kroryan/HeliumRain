@@ -57,6 +57,21 @@ void SFlareQuestMenu::Construct(const FArguments& InArgs)
 
 						+ SVerticalBox::Slot()
 						.AutoHeight()
+						[
+							SNew(SHorizontalBox)
+							+ SHorizontalBox::Slot()
+							.HAlign(HAlign_Left)
+							[
+								SAssignNew(ShowPreviousContractsButton, SFlareButton)
+								.Width(6)
+								.Text(LOCTEXT("PreviousQuestsToggle", "Show Previous contracts"))
+								.HelpText(LOCTEXT("PreviousQuestsToggleInfo", "Toggle to show or hide previous contracts"))
+								.Toggle(true)
+							]
+						]
+
+						+ SVerticalBox::Slot()
+						.AutoHeight()
 						.Padding(Theme.TitlePadding)
 						[
 							SNew(STextBlock)
@@ -109,34 +124,44 @@ void SFlareQuestMenu::Construct(const FArguments& InArgs)
 
 						+ SVerticalBox::Slot()
 						.AutoHeight()
-						.Padding(Theme.TitlePadding)
-						[
-							SNew(STextBlock)
-							.TextStyle(&Theme.SubTitleFont)
-							.Text(LOCTEXT("PreviousQuestsTitle", "Previous contracts"))
-						]
-
-						+ SVerticalBox::Slot()
-						.AutoHeight()
 						.Padding(Theme.ContentPadding)
 						[
-							SAssignNew(PreviousQuestList, SVerticalBox)
-						]
+							SNew(SBox)
+							.Visibility(this, &SFlareQuestMenu::IsPreviousContractsVisible)
+							[
+								SNew(SVerticalBox)
+								+ SVerticalBox::Slot()
+								.AutoHeight()
+								.Padding(Theme.TitlePadding)
+								[
+									SNew(STextBlock)
+									.TextStyle(&Theme.SubTitleFont)
+									.Text(LOCTEXT("PreviousQuestsTitle", "Previous contracts"))
+								]
 
-						+ SVerticalBox::Slot()
-						.AutoHeight()
-						.Padding(Theme.TitlePadding)
-						[
-							SNew(STextBlock)
-							.TextStyle(&Theme.SubTitleFont)
-							.Text(LOCTEXT("TutorialsTitle", "Previous tutorials"))
-						]
+								+ SVerticalBox::Slot()
+								.AutoHeight()
+								.Padding(Theme.ContentPadding)
+								[
+									SAssignNew(PreviousQuestList, SVerticalBox)
+								]
 
-						+ SVerticalBox::Slot()
-						.AutoHeight()
-						.Padding(Theme.ContentPadding)
-						[
-							SAssignNew(TutorialsList, SVerticalBox)
+								+ SVerticalBox::Slot()
+								.AutoHeight()
+								.Padding(Theme.TitlePadding)
+								[
+									SNew(STextBlock)
+									.TextStyle(&Theme.SubTitleFont)
+									.Text(LOCTEXT("TutorialsTitle", "Previous tutorials"))
+								]
+
+								+ SVerticalBox::Slot()
+								.AutoHeight()
+								.Padding(Theme.ContentPadding)
+								[
+									SAssignNew(TutorialsList, SVerticalBox)
+								]
+							]
 						]
 					]
 				]
@@ -161,6 +186,8 @@ void SFlareQuestMenu::Construct(const FArguments& InArgs)
 			]
 		]
 	];
+
+	ShowPreviousContractsButton->SetActive(true);
 }
 
 
@@ -374,7 +401,8 @@ void SFlareQuestMenu::FillPreviousQuestList()
 	TArray<UFlareQuest*>& PreviousQuests = QuestManager->GetPreviousQuests();
 
 	// Get list of previous quests
-	for (int32 QuestIndex = 0; QuestIndex < PreviousQuests.Num(); QuestIndex++)
+//	for (int32 QuestIndex = 0; QuestIndex < PreviousQuests.Num(); QuestIndex++)
+	for (int32 QuestIndex = PreviousQuests.Num() - 1; QuestIndex >= 0; QuestIndex--)
 	{
 		UFlareQuest* Quest = PreviousQuests[QuestIndex];
 
@@ -1027,5 +1055,9 @@ FReply SFlareQuestMenu::OnQuestStepSelected(UFlareQuestStep* QuestStep)
 	return FReply::Handled();
 }
 
+EVisibility SFlareQuestMenu::IsPreviousContractsVisible() const
+{
+	return ShowPreviousContractsButton->IsActive() ? EVisibility::Visible : EVisibility::Collapsed;
+}
 
 #undef LOCTEXT_NAMESPACE

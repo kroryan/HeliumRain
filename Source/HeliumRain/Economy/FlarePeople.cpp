@@ -184,7 +184,7 @@ void UFlarePeople::SimulateResourcePurchase()
 
 	bool LockNext = false;
 
-	uint32 FoodConsumption = GetRessourceConsumption(Food, true);
+	uint32 FoodConsumption = GetResourceConsumption(Food, true);
 	uint32 BoughtFood = BuyResourcesInSector(Food, FoodConsumption, 0.00105); //0.001); // In Tons
 	//if(BoughtFood)
 	//	FLOGV("People in %s bought %u food", *Parent->GetSectorName().ToString(), BoughtFood);
@@ -212,7 +212,7 @@ void UFlarePeople::SimulateResourcePurchase()
 
 	if(!LockNext && FuelPriceRatio < 0.75)
 	{
-		uint32 FuelConsumption = GetRessourceConsumption(Fuel, true);
+		uint32 FuelConsumption = GetResourceConsumption(Fuel, true);
 		uint32 BoughtFuel = BuyResourcesInSector(Fuel, FuelConsumption, 0.0021);//0.002); // In Tons
 		//if(BoughtFuel)
 		//	FLOGV("People in %s bought %u fuel", *Parent->GetSectorName().ToString(), BoughtFuel);
@@ -238,7 +238,7 @@ void UFlarePeople::SimulateResourcePurchase()
 	float ToolPriceRatio = (ToolPrice - Tool->MinPrice) / (float)(Tool->MaxPrice - Tool->MinPrice);
 	if(!LockNext && ToolPriceRatio < 0.5)
 	{
-		uint32 ToolConsumption = GetRessourceConsumption(Tool, true);
+		uint32 ToolConsumption = GetResourceConsumption(Tool, true);
 		uint32 BoughtTool = BuyResourcesInSector(Tool, ToolConsumption, 0.0042);//0.004); // In Tons
 		//if(BoughtTool)
 		//	FLOGV("People in %s bought %u tool", *Parent->GetSectorName().ToString(), BoughtTool);
@@ -262,7 +262,7 @@ void UFlarePeople::SimulateResourcePurchase()
 
 	if(!LockNext)
 	{
-		uint32 TechConsumption = GetRessourceConsumption(Tech, true);
+		uint32 TechConsumption = GetResourceConsumption(Tech, true);
 		uint32 BoughtTech = BuyResourcesInSector(Tech, TechConsumption, 0.0063);//0.006); // In Tons
 		//if(BoughtTech)
 		//	FLOGV("People in %s bought %u tech", *Parent->GetSectorName().ToString(), BoughtTech);
@@ -381,7 +381,8 @@ uint32 UFlarePeople::BuyResourcesInSector(FFlareResourceDescription* Resource, u
 		{
 			UFlareSimulatedSpacecraft* Station = SellingStations[StationIndex];
 			UFlareCompany* Company = Station->GetCompany();
-			uint32 StationResourceQuantity = Station->GetActiveCargoBay()->GetResourceQuantity(Resource, Company);
+			UFlareCargoBay* CargoBay = Station->GetActiveCargoBay();
+			uint32 StationResourceQuantity = CargoBay->GetResourceQuantity(Resource, Company);
 
 			if (StationResourceQuantity == 0)
 			{
@@ -394,7 +395,7 @@ uint32 UFlarePeople::BuyResourcesInSector(FFlareResourceDescription* Resource, u
 			if (PartToBuy > 0)
 			{
 				double Multiplier = GetDifficultyModifier(Company);
-				uint32 TakenQuantity = Station->GetActiveCargoBay()->TakeResources(Resource, PartToBuy, Company);
+				uint32 TakenQuantity = CargoBay->TakeResources(Resource, PartToBuy, Company);
 				ResourceToBuy -= TakenQuantity;
 				uint32 Price = (uint32)(MarketPrice * TakenQuantity) * Multiplier;
 				PeopleData.Money -= Price;
@@ -478,8 +479,9 @@ uint32 UFlarePeople::BuyInStationForCompany(FFlareResourceDescription* Resource,
 				continue;
 			}
 
-			uint32 StationFreeSpace = Station->GetActiveCargoBay()->GetFreeSpaceForResource(Resource, Company);
-			uint32 StationResourceQuantity = Station->GetActiveCargoBay()->GetResourceQuantity(Resource, Company);
+			UFlareCargoBay* CargoBay = Station->GetActiveCargoBay();
+			uint32 StationFreeSpace = CargoBay->GetFreeSpaceForResource(Resource, Company);
+			uint32 StationResourceQuantity = CargoBay->GetResourceQuantity(Resource, Company);
 
 			if (StationFreeSpace == 0 && StationResourceQuantity == 0)
 			{
@@ -512,7 +514,7 @@ uint32 UFlarePeople::BuyInStationForCompany(FFlareResourceDescription* Resource,
 	return Quantity - RemainingQuantity;
 }
 
-float UFlarePeople::GetRessourceConsumption(FFlareResourceDescription* Resource, bool WithStock)
+float UFlarePeople::GetResourceConsumption(FFlareResourceDescription* Resource, bool WithStock)
 {
 	FFlareResourceDescription* Food = Game->GetResourceCatalog()->Get("food");
 	FFlareResourceDescription* Fuel = Game->GetResourceCatalog()->Get("fuel");
@@ -829,10 +831,10 @@ void UFlarePeople::PrintInfo()
 	FLOGV("   - Tool: %u", PeopleData.ToolStock);
 	FLOGV("   - Tech: %u", PeopleData.TechStock);
 	FLOG(" - Consumptions (sector)");
-	FLOGV("   - Food: %f", GetRessourceConsumption(Food, false));
-	FLOGV("   - Fuel: %f", GetRessourceConsumption(Fuel, false));
-	FLOGV("   - Tool: %f", GetRessourceConsumption(Tools, false));
-	FLOGV("   - Tech: %f", GetRessourceConsumption(Tech, false));
+	FLOGV("   - Food: %f", GetResourceConsumption(Food, false));
+	FLOGV("   - Fuel: %f", GetResourceConsumption(Fuel, false));
+	FLOGV("   - Tool: %f", GetResourceConsumption(Tools, false));
+	FLOGV("   - Tech: %f", GetResourceConsumption(Tech, false));
 	FLOG(" - Consumptions (per inhabitant)");
 	FLOGV("   - Food: %f", PeopleData.FoodConsumption);
 	FLOGV("   - Fuel: %f", PeopleData.FuelConsumption);

@@ -724,7 +724,7 @@ FText SFlareSectorMenu::GetBuildStationHelpText() const
 		}
 		else if (OwnedStationCount >= MaxStationCount)
 		{
-			if (PC->GetCompany()->IsTechnologyUnlocked("dense-sectors"))
+			if (PC->GetCompany()->IsTechnologyUnlocked(PC->GetGame()->GetCacheSystem()->ID_TechDenseSectors))
 			{
 				return LOCTEXT("CantBuildStationMaxInfo", "This sector is already full");
 			}
@@ -1640,7 +1640,6 @@ void SFlareSectorMenu::OnBuildStationSelected(FFlareSpacecraftDescription* NewSt
 				MenuParameters.Sector = TargetSector;
 				MenuManager->OpenMenu(EFlareMenu::MENU_ReloadSector, MenuParameters);
 			}
-
 			// Other sector
 			else
 			{

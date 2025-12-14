@@ -79,7 +79,7 @@ void UFlareQuestPendulum::Load(UFlareQuestManager* Parent)
 		FText Description = LOCTEXT("DockAtDescription", "You are summoned by the Nema Colonial Administration to a meeting on the Pendulum project. Please dock at one of the habitation centers of the Blue Heart capital station.");
 		UFlareQuestStep* Step = UFlareQuestStep::Create(this, "meeting", Description);
 
-		UFlareQuestConditionDockAtType* Condition = UFlareQuestConditionDockAtType::Create(this, BlueHeart, "station-bh-habitation");
+		UFlareQuestConditionDockAtType* Condition = UFlareQuestConditionDockAtType::Create(this, BlueHeart, GetQuestManager()->GetGame()->GetCacheSystem()->ID_StationHabitation_Sub_BH);
 
 		Cast<UFlareQuestConditionGroup>(Step->GetEndCondition())->AddChildCondition(Condition);
 
@@ -147,7 +147,7 @@ void UFlareQuestPendulum::Load(UFlareQuestManager* Parent)
 		FText Description = LOCTEXT("DataReturnDescription", "This is great data ! Come back to our scientists in Blue Heart to see what they make of it.");
 		UFlareQuestStep* Step = UFlareQuestStep::Create(this, "data-return", Description);
 
-		UFlareQuestConditionDockAtType* Condition = UFlareQuestConditionDockAtType::Create(this, BlueHeart, "station-bh-habitation");
+		UFlareQuestConditionDockAtType* Condition = UFlareQuestConditionDockAtType::Create(this, BlueHeart, GetQuestManager()->GetGame()->GetCacheSystem()->ID_StationHabitation_Sub_BH);
 
 		Cast<UFlareQuestConditionGroup>(Step->GetEndCondition())->AddChildCondition(Condition);
 
@@ -162,8 +162,8 @@ void UFlareQuestPendulum::Load(UFlareQuestManager* Parent)
 
 		UFlareQuestStep* Step = UFlareQuestStep::Create(this, "research", Description);
 
-		Cast<UFlareQuestConditionGroup>(Step->GetEndCondition())->AddChildCondition(UFlareQuestConditionTutorialUnlockTechnology::Create(this, "orbital-pumps"));
-		Cast<UFlareQuestConditionGroup>(Step->GetEndCondition())->AddChildCondition(UFlareQuestConditionTutorialUnlockTechnology::Create(this, "science"));
+		Cast<UFlareQuestConditionGroup>(Step->GetEndCondition())->AddChildCondition(UFlareQuestConditionTutorialUnlockTechnology::Create(this, GetQuestManager()->GetGame()->GetCacheSystem()->ID_TechOrbitalPumps));
+		Cast<UFlareQuestConditionGroup>(Step->GetEndCondition())->AddChildCondition(UFlareQuestConditionTutorialUnlockTechnology::Create(this, GetQuestManager()->GetGame()->GetCacheSystem()->ID_TechScience));
 
 		Steps.Add(Step);
 	}
@@ -176,7 +176,7 @@ void UFlareQuestPendulum::Load(UFlareQuestManager* Parent)
 
 		UFlareQuestStep* Step = UFlareQuestStep::Create(this, "telescope", Description);
 
-		Cast<UFlareQuestConditionGroup>(Step->GetEndCondition())->AddChildCondition(UFlareQuestStationCount::Create(this, "station-telescope", 1));
+		Cast<UFlareQuestConditionGroup>(Step->GetEndCondition())->AddChildCondition(UFlareQuestStationCount::Create(this, GetQuestManager()->GetGame()->GetCacheSystem()->ID_StationTelescope, 1));
 
 		Steps.Add(Step);
 	}
@@ -246,9 +246,9 @@ void UFlareQuestPendulum::Load(UFlareQuestManager* Parent)
 		UFlareQuestStep* Step = UFlareQuestStep::Create(this, "pumps", Description);
 		Step->SetEndCondition(UFlareQuestConditionOrGroup::Create(this, true));
 
-		Cast<UFlareQuestConditionGroup>(Step->GetEndCondition())->AddChildCondition(UFlareQuestConditionTutorialHaveStation::Create(this, false, "station-ch4-pump", Pendulum));
-		Cast<UFlareQuestConditionGroup>(Step->GetEndCondition())->AddChildCondition(UFlareQuestConditionTutorialHaveStation::Create(this, false, "station-h2-pump", Pendulum));
-		Cast<UFlareQuestConditionGroup>(Step->GetEndCondition())->AddChildCondition(UFlareQuestConditionTutorialHaveStation::Create(this, false, "station-he3-pump", Pendulum));
+		Cast<UFlareQuestConditionGroup>(Step->GetEndCondition())->AddChildCondition(UFlareQuestConditionTutorialHaveStation::Create(this, false, GetQuestManager()->GetGame()->GetCacheSystem()->ID_StationMethanePump, Pendulum));
+		Cast<UFlareQuestConditionGroup>(Step->GetEndCondition())->AddChildCondition(UFlareQuestConditionTutorialHaveStation::Create(this, false, GetQuestManager()->GetGame()->GetCacheSystem()->ID_StationHydrogenPump, Pendulum));
+		Cast<UFlareQuestConditionGroup>(Step->GetEndCondition())->AddChildCondition(UFlareQuestConditionTutorialHaveStation::Create(this, false, GetQuestManager()->GetGame()->GetCacheSystem()->ID_StationHeliumPump, Pendulum));
 		Steps.Add(Step);
 	}
 

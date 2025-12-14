@@ -992,7 +992,6 @@ The research points needed to unlock technology can be gained in multiple ways:\
 								.Style(&Theme.ScrollBoxStyle)
 								.ScrollBarStyle(&Theme.ScrollBarStyle)
 
-
 								+ SScrollBox::Slot()
 								.Padding(Theme.ContentPadding)
 								[
@@ -1030,7 +1029,7 @@ Spaceships may be civilian or military. Civilian spaceships have a cargo bay and
 											[
 												SNew(STextBlock)
 												.Text(LOCTEXT("SpaceshipsListTitle", "Spaceship Statistics"))
-											.TextStyle(&Theme.TitleFont)
+												.TextStyle(&Theme.TitleFont)
 											]
 
 										+ SVerticalBox::Slot()
@@ -1117,7 +1116,7 @@ Spaceships may be civilian or military. Civilian spaceships have a cargo bay and
 											SAssignNew(StationSelector, SListView<TSharedPtr<FInterfaceContainer>>)
 											.ListItemsSource(&StationList)
 											.SelectionMode(ESelectionMode::None)
-											.OnGenerateRow(this, &SFlareHelpMenu::OnGenerateSpacecraftLine,false)
+											.OnGenerateRow(this, &SFlareHelpMenu::OnGenerateSpacecraftLine,true)
 										]
 									]
 								]
@@ -3081,7 +3080,7 @@ void SFlareHelpMenu::Enter()
 	{
 		for (int SpacecraftIndex = 0; SpacecraftIndex < SpacecraftCatalog->StationCatalog.Num(); SpacecraftIndex++)
 		{
-			// Candidate have to be not a substation and available in tech
+			// Candidate have to be not a substation
 			FFlareSpacecraftDescription* Description = &SpacecraftCatalog->StationCatalog[SpacecraftIndex]->Data;
 			if (!Description->IsSubstation)
 			{
@@ -3095,7 +3094,6 @@ void SFlareHelpMenu::Enter()
 	{
 		for (int SpacecraftIndex = 0; SpacecraftIndex < SpacecraftCatalog->ShipCatalog.Num(); SpacecraftIndex++)
 		{
-			// Candidate have to be not a substation and available in tech
 			UFlareSpacecraftCatalogEntry* Entry = SpacecraftCatalog->ShipCatalog[SpacecraftIndex];
 			ShipList.AddUnique(FInterfaceContainer::New(&Entry->Data));
 		}
@@ -3400,9 +3398,10 @@ TSharedRef<ITableRow> SFlareHelpMenu::OnGenerateSpacecraftLine(TSharedPtr<FInter
 		.Desc(Desc)
 		.VerboseInformation(true)
 		.OrderIsShip(OrderIsShipValue)
-		.TargetShipyard(NULL)
-		.TargetSkirmish(NULL)
-		.TargetSector(NULL)
+		.OrderIsConfig(false)
+		.TargetSkirmish(nullptr)
+		.TargetShipyard(nullptr)
+		.TargetSector(nullptr)
 	];
 }
 

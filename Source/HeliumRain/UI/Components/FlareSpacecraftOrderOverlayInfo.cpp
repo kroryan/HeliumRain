@@ -13,7 +13,7 @@
 #include "../../Data/FlareSpacecraftComponentsCatalog.h"
 
 #define LOCTEXT_NAMESPACE "FlareSpacecraftOrderOverlayInfo"
-#define DEBUG_TURRETANGLES
+//#define DEBUG_TURRETANGLES
 
 /*----------------------------------------------------
 	Construct
@@ -73,16 +73,15 @@ void SFlareSpaceCraftOverlayInfo::Construct(const FArguments& InArgs)
 		.HAlign(HAlign_Fill)
 		[
 			SNew(SHorizontalBox)
-
 			// Picture
-		+ SHorizontalBox::Slot()
-		.AutoWidth()
-		.Padding(Theme.ContentPadding)
-		.VAlign(VAlign_Top)
-		[
-			SNew(SImage)
-			.Image(&Desc->MeshPreviewBrush)
-		]
+			+ SHorizontalBox::Slot()
+			.AutoWidth()
+			.Padding(Theme.ContentPadding)
+			.VAlign(VAlign_Top)
+			[
+				SNew(SImage)
+				.Image(&Desc->MeshPreviewBrush)
+			]
 
 	// Main infos
 	+ SHorizontalBox::Slot()
@@ -159,13 +158,13 @@ void SFlareSpaceCraftOverlayInfo::Construct(const FArguments& InArgs)
 		[
 			SNew(SVerticalBox)
 			+ SVerticalBox::Slot()
-		.AutoHeight()
-		[
-			SNew(STextBlock)
-			.Text(LOCTEXT("ProductionCost", "Production cost & duration"))
-		.Visibility(!OrderIsConfig ? EVisibility::Visible : EVisibility::Collapsed)
-		.TextStyle(&Theme.NameFont)
-		]
+			.AutoHeight()
+			[
+				SNew(STextBlock)
+				.Text(LOCTEXT("ProductionCost", "Production cost & duration"))
+				.Visibility(!OrderIsConfig ? EVisibility::Visible : EVisibility::Collapsed)
+				.TextStyle(&Theme.NameFont)
+			]
 
 	+ SVerticalBox::Slot()
 		.AutoHeight()
@@ -183,12 +182,12 @@ void SFlareSpaceCraftOverlayInfo::Construct(const FArguments& InArgs)
 		[
 			SNew(STextBlock)
 			.Text(this, &SFlareSpaceCraftOverlayInfo::GetProductionTime)
-		.Visibility(this, &SFlareSpaceCraftOverlayInfo::GetProductionTimeVisibility)
-		.WrapTextAt(0.65 * Theme.ContentWidth)
-		.TextStyle(&Theme.TextFont)
+			.Visibility(this, &SFlareSpaceCraftOverlayInfo::GetProductionTimeVisibility)
+			.WrapTextAt(0.65 * Theme.ContentWidth)
+			.TextStyle(&Theme.TextFont)
 		]
 		]
-		];
+	];
 }
 
 void SFlareSpaceCraftOverlayInfo::Tick(const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime)
@@ -397,9 +396,10 @@ void SFlareSpaceCraftOverlayInfo::SetSpacecraftInfoVerbose()
 
 	if (Desc->RCSCount > 0)
 	{
+		FFlareSpacecraftComponentDescription* ComponentDescription = Catalog->Get(RCSIdentifier);
+
 		for (int32 i = 0; i < Desc->RCSCount; i++)
 		{
-			FFlareSpacecraftComponentDescription* ComponentDescription = Catalog->Get(RCSIdentifier);
 			if (ComponentDescription)
 			{
 				HitPoints += ComponentDescription->HitPoints;
@@ -418,9 +418,10 @@ void SFlareSpaceCraftOverlayInfo::SetSpacecraftInfoVerbose()
 
 	if (Desc->OrbitalEngineCount > 0)
 	{
+		FFlareSpacecraftComponentDescription* ComponentDescription = Catalog->Get(OrbitalEngineIdentifier);
+
 		for (int32 i = 0; i < Desc->OrbitalEngineCount; i++)
 		{
-			FFlareSpacecraftComponentDescription* ComponentDescription = Catalog->Get(OrbitalEngineIdentifier);
 			if (ComponentDescription)
 			{
 				HitPoints += ComponentDescription->HitPoints;
@@ -762,7 +763,7 @@ void SFlareSpaceCraftOverlayInfo::SetSpacecraftInfoVerbose()
 			FText::AsNumber(Desc->DroneMaximum));
 	}
 
-	VerboseInfoLeft = FText::Format(LOCTEXT("SpacecraftInfoVerboseHelperLeft", "{0}{1}{2}{3}{4}{5}{6}{7}{8}{9}{10}"),
+	VerboseInfoLeft = FText::Format(LOCTEXT("SpacecraftInfoVerboseHelperLeft", "{0}{1}{2}{3}{4}{5}{6}{7}{8}{9}"),
 		Mass,
 		CapturePointsOffense,
 		CapturePointDefense,
@@ -772,8 +773,7 @@ void SFlareSpaceCraftOverlayInfo::SetSpacecraftInfoVerbose()
 		AngularMaxVelocity,
 		LinearMaxVelocity,
 		DroneMax,
-		InternalComponents,
-		TurretAngles);
+		InternalComponents);
 //		InternalCompsLeft,
 //		TurretAngles);
 
@@ -805,12 +805,8 @@ FText SFlareSpaceCraftOverlayInfo::GetSpacecraftInfo() const
 		}
 		return GetSpacecraftShipInfo();
 	}
-
-	// Station-building
 	else
 	{
-		//		FCHECK(TargetSector);
-
 		if (VerboseInformation)
 		{
 			if (Desc->Factories.Num() > 0)
@@ -1247,52 +1243,53 @@ FText SFlareSpaceCraftOverlayInfo::GetTechnologyRequirementsText(const FFlareSpa
 	const FFlareTechnologyDescription* Technology = nullptr;
 	FText TechnologyRequired = FText();
 	FName Identifier = Description->Identifier;
+	UFlareCacheSystem* GameCache = MenuManager->GetGame()->GetCacheSystem();
 
-	if (Identifier == "station-habitation" ||
-		Identifier == "station-outpost" ||
-		Identifier == "station-solar-plant")
+	if (Identifier == GameCache->ID_StationHabitation ||
+		Identifier == GameCache->ID_StationOutpost ||
+		Identifier == GameCache->ID_StationSolarPlant)
 	{
-		Technology = MenuManager->GetGame()->GetTechnologyCatalog()->Get("stations");
+		Technology = MenuManager->GetGame()->GetTechnologyCatalog()->Get(GameCache->ID_TechLogistics);
 	}
-	else if (Identifier == "station-ice-mine" ||
-		Identifier == "station-silica-mine" ||
-		Identifier == "station-iron-mine")
+	else if (Identifier == GameCache->ID_StationIceMine ||
+		Identifier == GameCache->ID_StationSilicaMine ||
+		Identifier == GameCache->ID_StationIronMine)
 	{
-		Technology = MenuManager->GetGame()->GetTechnologyCatalog()->Get("mining");
+		Technology = MenuManager->GetGame()->GetTechnologyCatalog()->Get(GameCache->ID_TechMining);
 	}
-	else if (Identifier == "station-carbon-refinery" ||
-		Identifier == "station-farm" ||
-		Identifier == "station-plastics-refinery")
+	else if (Identifier == GameCache->ID_StationCarbonRefinery ||
+		Identifier == GameCache->ID_StationFarm ||
+		Identifier == GameCache->ID_StationPlasticsRefinery)
 	{
-		Technology = MenuManager->GetGame()->GetTechnologyCatalog()->Get("chemicals");
+		Technology = MenuManager->GetGame()->GetTechnologyCatalog()->Get(GameCache->ID_TechChemicals);
 	}
-	else if (Identifier == "station-ch4-pump" ||
-		Identifier == "station-he3-pump" ||
-		Identifier == "station-h2-pump")
+	else if (Identifier == GameCache->ID_StationMethanePump ||
+		Identifier == GameCache->ID_StationHeliumPump ||
+		Identifier == GameCache->ID_StationHydrogenPump)
 	{
-		Technology = MenuManager->GetGame()->GetTechnologyCatalog()->Get("orbital-pumps");
+		Technology = MenuManager->GetGame()->GetTechnologyCatalog()->Get(GameCache->ID_TechOrbitalPumps);
 	}
-	else if (Identifier == "station-steelworks" ||
-		Identifier == "station-tool-factory" ||
-		Identifier == "station-arsenal")
+	else if (Identifier == GameCache->ID_StationSteelworks ||
+		Identifier == GameCache->ID_StationToolFactory ||
+		Identifier == GameCache->ID_StationArsenal)
 	{
-		Technology = MenuManager->GetGame()->GetTechnologyCatalog()->Get("metallurgy");
+		Technology = MenuManager->GetGame()->GetTechnologyCatalog()->Get(GameCache->ID_TechMetallurgy);
 	}
-	else if (Identifier == "station-shipyard")
+	else if (Identifier == GameCache->ID_StationShipyard)
 	{
-		Technology = MenuManager->GetGame()->GetTechnologyCatalog()->Get("shipyard-station");
+		Technology = MenuManager->GetGame()->GetTechnologyCatalog()->Get(GameCache->ID_TechShipyard);
 	}
-	else if (Identifier == "station-tokamak" ||
-		Identifier == "station-hub" ||
-		Identifier == "station-complex" ||
-		Identifier == "station-foundry")
+	else if (Identifier == GameCache->ID_StationFusion ||
+		Identifier == GameCache->ID_StationHub ||
+		Identifier == GameCache->ID_StationComplex ||
+		Identifier == GameCache->ID_StationFoundry)
 	{
-		Technology = MenuManager->GetGame()->GetTechnologyCatalog()->Get("advanced-stations");
+		Technology = MenuManager->GetGame()->GetTechnologyCatalog()->Get(GameCache->ID_TechAdvancedStations);
 	}
-	else if (Identifier == "station-telescope" ||
-		Identifier == "station-research")
+	else if (Identifier == GameCache->ID_StationTelescope ||
+		Identifier == GameCache->ID_StationResearch)
 	{
-		Technology = MenuManager->GetGame()->GetTechnologyCatalog()->Get("science");
+		Technology = MenuManager->GetGame()->GetTechnologyCatalog()->Get(GameCache->ID_TechScience);
 	}
 	else if(Description->RequiredTechnologies.Num() > 0)
 	{

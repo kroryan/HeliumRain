@@ -368,7 +368,7 @@ void UFlareAIBehavior::UpdateDiplomacy(bool GlobalWar)
 					}
 
 					//and because reputation is a player only mechanic, we chuck in a diplomacy modifier to the skip chance of the target
-					float TechnologyBonus = TargetCompany->IsTechnologyUnlocked("diplomacy") ? 1.5f : 1.f;
+					float TechnologyBonus = TargetCompany->IsTechnologyUnlocked(GetGame()->GetCacheSystem()->ID_TechDiplomacy) ? 1.5f : 1.f;
 					Skipchance *= TechnologyBonus;
 				}
 
@@ -504,6 +504,8 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 
 	ResearchTechEligableBias = 0.25f;
 
+	UFlareCacheSystem* GameCache = Game->GetCacheSystem();
+
 	if((Company && Company == ST->Pirates) || (CompanyDescription && CompanyDescription->ShortName==FName("PIR")))
 	{
 		// Pirates
@@ -584,10 +586,10 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 
 		ResearchTechEligableBias = 1.f;
 		ResearchOrder.Reserve(4);
-		ResearchOrder.Add("instruments");
-		ResearchOrder.Add("flak");
-		ResearchOrder.Add("fast-travel");
-		ResearchOrder.Add("bombing");
+		ResearchOrder.Add(GameCache->ID_TechInstruments);
+		ResearchOrder.Add(GameCache->ID_TechFlak);
+		ResearchOrder.Add(GameCache->ID_TechFastTravel);
+		ResearchOrder.Add(GameCache->ID_TechBombing);
 	}
 	else if((Company && Company == ST->GhostWorksShipyards) || (CompanyDescription && CompanyDescription->ShortName == FName("GWS")))
 	{
@@ -660,11 +662,11 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 
 		ResearchTechEligableBias = 0.50f;
 		ResearchOrder.Reserve(5);
-		ResearchOrder.Add("science");
-		ResearchOrder.Add("instruments");
-		ResearchOrder.Add("orbital-pumps");
-		ResearchOrder.Add("metallurgy");
-		ResearchOrder.Add("chemicals");
+		ResearchOrder.Add(GameCache->ID_TechScience);
+		ResearchOrder.Add(GameCache->ID_TechInstruments);
+		ResearchOrder.Add(GameCache->ID_TechOrbitalPumps);
+		ResearchOrder.Add(GameCache->ID_TechMetallurgy);
+		ResearchOrder.Add(GameCache->ID_TechChemicals);
 	}
 	else if((Company && Company == ST->HelixFoundries) || (CompanyDescription && CompanyDescription->ShortName == FName("HFR")))
 	{
@@ -704,8 +706,8 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 
 		//already starts with instruments
 		ResearchOrder.Reserve(2);
-		ResearchOrder.Add("science");
-		ResearchOrder.Add("advanced-stations");
+		ResearchOrder.Add(GameCache->ID_TechScience);
+		ResearchOrder.Add(GameCache->ID_TechAdvancedStations);
 	}
 	else if((Company && Company == ST->IonLane) || (CompanyDescription && CompanyDescription->ShortName == FName("ION")))
 	{
@@ -737,10 +739,10 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 		BuildEfficientTradeChance = 0.20f;
 
 		ResearchOrder.Reserve(4);
-		ResearchOrder.Add("science");
-		ResearchOrder.Add("instruments");
-		ResearchOrder.Add("fast-travel");
-		ResearchOrder.Add("quick-repair");
+		ResearchOrder.Add(GameCache->ID_TechScience);
+		ResearchOrder.Add(GameCache->ID_TechInstruments);
+		ResearchOrder.Add(GameCache->ID_TechFastTravel);
+		ResearchOrder.Add(GameCache->ID_TechQuickRepairs);
 	}
 	else if((Company && Company == ST->UnitedFarmsChemicals) || (CompanyDescription && CompanyDescription->ShortName == FName("UFC")))
 	{
@@ -796,9 +798,9 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 		BuildEfficientTradeChance = 0.15f;
 
 		ResearchOrder.Reserve(3);
-		ResearchOrder.Add("science");
-		ResearchOrder.Add("instruments");
-		ResearchOrder.Add("shipyard-station");
+		ResearchOrder.Add(GameCache->ID_TechScience);
+		ResearchOrder.Add(GameCache->ID_TechInstruments);
+		ResearchOrder.Add(GameCache->ID_TechShipyard);
 	}
 	else if((Company && Company == ST->AxisSupplies) || (CompanyDescription && CompanyDescription->ShortName == FName("AXS")))
 	{
@@ -848,9 +850,9 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 		BuildEfficientTradeChance = 0.15f;
 
 		ResearchOrder.Reserve(3);
-		ResearchOrder.Add("science");
-		ResearchOrder.Add("instruments");
-		ResearchOrder.Add("fast-travel");
+		ResearchOrder.Add(GameCache->ID_TechScience);
+		ResearchOrder.Add(GameCache->ID_TechInstruments);
+		ResearchOrder.Add(GameCache->ID_TechFastTravel);
 	}
 	else if ((Company && Company == ST->BrokenMoon) || (CompanyDescription && CompanyDescription->ShortName == FName("BRM")))
 	{
@@ -883,12 +885,12 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 		BuildEfficientMilitaryChanceSmall = 0.25f;
 
 		ResearchOrder.Reserve(6);
-		ResearchOrder.Add("instruments");
-		ResearchOrder.Add("pirate-tech");
-		ResearchOrder.Add("fast-travel");
-		ResearchOrder.Add("bombing");
-		ResearchOrder.Add("flak");
-		ResearchOrder.Add("quick-repair");
+		ResearchOrder.Add(GameCache->ID_TechInstruments);
+		ResearchOrder.Add(GameCache->ID_TechPirateTech);
+		ResearchOrder.Add(GameCache->ID_TechFastTravel);
+		ResearchOrder.Add(GameCache->ID_TechBombing);
+		ResearchOrder.Add(GameCache->ID_TechFlak);
+		ResearchOrder.Add(GameCache->ID_TechQuickRepairs);
 	}
 	else if ((Company && Company == ST->Quantalium) || (CompanyDescription && CompanyDescription->ShortName == FName("QNT")))
 	{
@@ -900,7 +902,7 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 		}
 		else
 		{
-			SetResourceAffility(Game->GetResourceCatalog()->Get("tech"), 10.f);
+			SetResourceAffility(Game->GetResourceCatalog()->Get("tech"), 15.f);
 		}
 
 		ComplexAffility = 1.25f;
@@ -931,9 +933,9 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 
 		ResearchTechEligableBias = 0.f;
 		ResearchOrder.Reserve(3);
-		ResearchOrder.Add("science");
-		ResearchOrder.Add("instruments");
-		ResearchOrder.Add("advanced-stations");
+		ResearchOrder.Add(GameCache->ID_TechScience);
+		ResearchOrder.Add(GameCache->ID_TechInstruments);
+		ResearchOrder.Add(GameCache->ID_TechAdvancedStations);
 	}
 	else if((Company && Company == ST->InfiniteOrbit) || (CompanyDescription && CompanyDescription->ShortName == FName("IFO")))
 	{
@@ -944,9 +946,9 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 		BudgetMinimumRepairFactor = 1.f;
 
 		ResearchOrder.Reserve(3);
-		ResearchOrder.Add("science");
-		ResearchOrder.Add("instruments");
-		ResearchOrder.Add("fast-travel");
+		ResearchOrder.Add(GameCache->ID_TechScience);
+		ResearchOrder.Add(GameCache->ID_TechInstruments);
+		ResearchOrder.Add(GameCache->ID_TechFastTravel);
 	}
 
 	if (!Basic)
@@ -1018,8 +1020,8 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 	else if(!ResearchOrder.Num())
 	{
 		ResearchOrder.Reserve(2);
-		ResearchOrder.Add("science");
-		ResearchOrder.Add("instruments");
+		ResearchOrder.Add(GameCache->ID_TechScience);
+		ResearchOrder.Add(GameCache->ID_TechInstruments);
 	}
 
 	if (CompanyDescription->AI_Behaviours.IsMercenaryCompany)

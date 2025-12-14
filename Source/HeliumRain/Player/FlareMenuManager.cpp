@@ -999,8 +999,7 @@ bool AFlareMenuManager::ReloadSector()
 		// Reload the sector (only when not reentrant)
 		if (MenuOperationDone)
 		{
-			PC->GetGame()->DeactivateSector();
-			PC->GetGame()->ActivateCurrentSector();
+			PC->GetGame()->ReactivateSector();
 		}
 
 		if (NextMenu.Value.Spacecraft)

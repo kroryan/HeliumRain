@@ -97,6 +97,113 @@ AFlareSpacecraft::AFlareSpacecraft(const class FObjectInitializer& PCIP)
 	PreviousJoystickThrottle = 0;
 }
 
+void AFlareSpacecraft::Load(UFlareSimulatedSpacecraft* ParentSpacecraft)
+{
+	// Update local data
+	SetMeshBox = false;
+	LoadedAndReady = false;
+	SetUndockedAllShips(false);
+	SetParent(ParentSpacecraft);
+
+	ResetCurrentTarget();
+
+	/*FLOGV("AFlareSpacecraft::Load %s", *ParentSpacecraft->GetImmatriculation().ToString());*/
+
+	// Load ship description
+
+	// Initialize damage system
+	if (!DamageSystem)
+	{
+		DamageSystem = NewObject<UFlareSpacecraftDamageSystem>(this, UFlareSpacecraftDamageSystem::StaticClass());
+	}
+	DamageSystem->Initialize(this, &GetData());
+
+	// Initialize docking system
+	if (!DockingSystem)
+	{
+		DockingSystem = NewObject<UFlareSpacecraftDockingSystem>(this, UFlareSpacecraftDockingSystem::StaticClass());
+	}
+	DockingSystem->Initialize(this, &GetData());
+
+	// Initialize weapons system
+	if (!WeaponsSystem)
+	{
+		WeaponsSystem = NewObject<UFlareSpacecraftWeaponsSystem>(this, UFlareSpacecraftWeaponsSystem::StaticClass());
+	}
+	WeaponsSystem->Initialize(this, &GetData());
+
+	// Load dynamic components
+	UpdateDynamicComponents();
+
+	// Initialize components
+	UpdateComponents();
+
+	// Initialize navigation system
+	if (!NavigationSystem)
+	{
+		NavigationSystem = NewObject<UFlareSpacecraftNavigationSystem>(this, UFlareSpacecraftNavigationSystem::StaticClass());
+	}
+	else
+	{
+		NavigationSystem->BreakDock();
+	}
+
+	NavigationSystem->Initialize(this, &GetData());
+	SetRCSDescription(RCSDescription);
+
+	// Look for an asteroid component
+	ApplyAsteroidData();
+
+	// Setup ship name texture target
+	if (!ShipNameTexture)
+	{
+		ShipNameTexture = UCanvasRenderTarget2D::CreateCanvasRenderTarget2D(this, UCanvasRenderTarget2D::StaticClass(), 384, 384);// 256, 256);
+		FCHECK(ShipNameTexture);
+		ShipNameTexture->OnCanvasRenderTargetUpdate.AddDynamic(this, &AFlareSpacecraft::DrawShipName);
+		ShipNameTexture->ClearColor = FLinearColor::Black;
+	}
+
+	// Customization
+	UpdateCustomization();
+
+	// If not rcs, add passive stabilization
+	if (GetDescription()->RCSCount == 0)
+	{
+		Airframe->SetLinearDamping(0.1);
+		Airframe->SetAngularDamping(0.1);
+	}
+
+	// Initialize pilot
+	if (!Pilot)
+	{
+		Pilot = NewObject<UFlareShipPilot>(this, UFlareShipPilot::StaticClass());
+	}
+
+	Pilot->Initialize(&GetData().Pilot, GetCompany(), this);
+
+	if (!StateManager)
+	{
+		StateManager = NewObject<UFlareSpacecraftStateManager>(this, UFlareSpacecraftStateManager::StaticClass());
+	}
+
+	StateManager->InitializeStateManager(this);
+
+	// Subsystems
+	DamageSystem->Start();
+	NavigationSystem->Start();
+	DockingSystem->Start();
+	WeaponsSystem->Start();
+	DamageSystem->CalculateInitialHeat();
+
+	SmoothedVelocity = GetLinearVelocity();
+
+	if (IsPaused())
+	{
+		Airframe->SetSimulatePhysics(false);
+	}
+
+	FirstTimeSetupRun = true;
+}
 
 /*----------------------------------------------------
 	Gameplay events
@@ -731,26 +838,26 @@ FFlareSpacecraftComponentDescription* AFlareSpacecraft::GetDefaultWeaponFallback
 	// small weapons
 	if (WhatFallBack == 10)
 	{
-		ReturnValue = Catalog->Get(FName("weapon-eradicator"));
+		ReturnValue = Catalog->Get(GetGame()->GetCacheSystem()->ID_WeaponEradicator);
 	}
 	else if (WhatFallBack == 9)
 	{
-		ReturnValue = Catalog->Get(FName("weapon-mjolnir"));
+		ReturnValue = Catalog->Get(GetGame()->GetCacheSystem()->ID_WeaponMjolnir);
 	}
 	else if (WhatFallBack == 8)
 	{
-		ReturnValue = Catalog->Get(FName("weapon-hammer"));
+		ReturnValue = Catalog->Get(GetGame()->GetCacheSystem()->ID_WeaponHammer);
 	}
 	//large weapons
 	//	ReturnValue = Catalog->Get(FName("weapon-hades"));
 	//	hades not an appropriate visual effect
 	else if (WhatFallBack >= 6)
 	{
-		ReturnValue = Catalog->Get(FName("weapon-ares"));
+		ReturnValue = Catalog->Get(GetGame()->GetCacheSystem()->ID_WeaponAres);
 	}
 	else
 	{
-		ReturnValue = Catalog->Get(FName("weapon-artemis"));
+		ReturnValue = Catalog->Get(GetGame()->GetCacheSystem()->ID_WeaponArtemis);
 	}
 
 	return ReturnValue;
@@ -766,7 +873,7 @@ float AFlareSpacecraft::GetExplosionScaleFactor(FFlareSpacecraftComponentDescrip
 
 	float ScaleFactor = 0;
 
-	if (WeaponFallback == Catalog->Get(FName("weapon-eradicator")))
+	if (WeaponFallback == Catalog->Get(GetGame()->GetCacheSystem()->ID_WeaponEradicator))
 	{
 		if (IsFinalExplosion)
 		{
@@ -776,7 +883,7 @@ float AFlareSpacecraft::GetExplosionScaleFactor(FFlareSpacecraftComponentDescrip
 			}
 		}
 	}
-	else if (WeaponFallback == Catalog->Get(FName("weapon-mjolnir")))
+	else if (WeaponFallback == Catalog->Get(GetGame()->GetCacheSystem()->ID_WeaponMjolnir))
 	{
 		if (IsFinalExplosion)
 		{
@@ -786,7 +893,7 @@ float AFlareSpacecraft::GetExplosionScaleFactor(FFlareSpacecraftComponentDescrip
 			}
 		}
 	}
-	else if (WeaponFallback == Catalog->Get(FName("weapon-hammer")))
+	else if (WeaponFallback == Catalog->Get(GetGame()->GetCacheSystem()->ID_WeaponHammer))
 	{
 		if (IsFinalExplosion)
 		{
@@ -800,7 +907,7 @@ float AFlareSpacecraft::GetExplosionScaleFactor(FFlareSpacecraftComponentDescrip
 			}
 		}
 	}
-	else if (WeaponFallback == Catalog->Get(FName("weapon-hades")))
+	else if (WeaponFallback == Catalog->Get(GetGame()->GetCacheSystem()->ID_WeaponHades))
 	{
 		if (IsFinalExplosion)
 		{
@@ -825,7 +932,7 @@ float AFlareSpacecraft::GetExplosionScaleFactor(FFlareSpacecraftComponentDescrip
 			}
 		}
 	}
-	else if (WeaponFallback == Catalog->Get(FName("weapon-ares")))
+	else if (WeaponFallback == Catalog->Get(GetGame()->GetCacheSystem()->ID_WeaponAres))
 	{
 		if (IsFinalExplosion)
 		{
@@ -850,7 +957,7 @@ float AFlareSpacecraft::GetExplosionScaleFactor(FFlareSpacecraftComponentDescrip
 			}
 		}
 	}
-	else if (WeaponFallback == Catalog->Get(FName("weapon-artemis")))
+	else if (WeaponFallback == Catalog->Get(GetGame()->GetCacheSystem()->ID_WeaponArtemis))
 	{
 	}
 
@@ -1053,7 +1160,7 @@ void AFlareSpacecraft::SafeHide(bool ShowExplosion)
 				FVector ActorScale = GetActorScale();
 
 				bool OmniDirectional = false;
-				if (Catalog && (DefaultWeaponFallback == Catalog->Get(FName("weapon-eradicator"))))
+				if (Catalog && (DefaultWeaponFallback == Catalog->Get(GetGame()->GetCacheSystem()->ID_WeaponEradicator)))
 				{
 					OmniDirectional = true;
 				}
@@ -1112,8 +1219,10 @@ void AFlareSpacecraft::UnSafeDestroy()
 		IsSafeDestroyingRunning = false;
 		this->SetActorHiddenInGame(false);
 		this->SetActorEnableCollision(true);
-		Airframe->SetSimulatePhysics(true);
-		Airframe->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+
+//		Airframe->SetSimulatePhysics(true);
+//		Airframe->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+
 		TArray<UActorComponent*> Components = GetComponentsByClass(UFlareSpacecraftComponent::StaticClass());
 		for (int32 ComponentIndex = 0; ComponentIndex < Components.Num(); ComponentIndex++)
 		{
@@ -1574,129 +1683,6 @@ void AFlareSpacecraft::SetParent(UFlareSimulatedSpacecraft* ParentSpacecraft)
 	{
 		Parent->SetActiveSpacecraft(this);
 	}
-	
-/*
-	if (!IsPresentationMode())
-	{
-		Airframe->SetSimulatePhysics(true);
-		Parent->SetActiveSpacecraft(this);
-	}
-
-	if (Parent->GetData().AttachActorName != NAME_None)
-	{
-		Airframe->SetSimulatePhysics(false);
-		Airframe->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	}
-	*/
-}
-
-void AFlareSpacecraft::Load(UFlareSimulatedSpacecraft* ParentSpacecraft)
-{
-	// Update local data
-	SetMeshBox = false;
-	LoadedAndReady = false;
-	SetUndockedAllShips(false);
-	SetParent(ParentSpacecraft);
-
-	ResetCurrentTarget();
-
-	/*FLOGV("AFlareSpacecraft::Load %s", *ParentSpacecraft->GetImmatriculation().ToString());*/
-
-	// Load ship description
-	UFlareSpacecraftComponentsCatalog* Catalog = GetGame()->GetShipPartsCatalog();
-
-	// Initialize damage system
-	if (!DamageSystem)
-	{
-		DamageSystem = NewObject<UFlareSpacecraftDamageSystem>(this, UFlareSpacecraftDamageSystem::StaticClass());
-	}
-	DamageSystem->Initialize(this, &GetData());
-
-	// Initialize docking system
-	if (!DockingSystem)
-	{
-		DockingSystem = NewObject<UFlareSpacecraftDockingSystem>(this, UFlareSpacecraftDockingSystem::StaticClass());
-	}
-	DockingSystem->Initialize(this, &GetData());
-
-	// Initialize weapons system
-	if (!WeaponsSystem)
-	{
-		WeaponsSystem = NewObject<UFlareSpacecraftWeaponsSystem>(this, UFlareSpacecraftWeaponsSystem::StaticClass());
-	}
-	WeaponsSystem->Initialize(this, &GetData());
-
-	// Load dynamic components
-	UpdateDynamicComponents();
-
-	// Initialize components
-	UpdateComponents();
-
-	// Initialize navigation system
-	if (!NavigationSystem)
-	{
-		NavigationSystem = NewObject<UFlareSpacecraftNavigationSystem>(this, UFlareSpacecraftNavigationSystem::StaticClass());
-	}
-	else
-	{
-		NavigationSystem->BreakDock();
-	}
-
-	NavigationSystem->Initialize(this, &GetData());
-	SetRCSDescription(RCSDescription);
-
-	// Look for an asteroid component
-	ApplyAsteroidData();
-
-	// Setup ship name texture target
-	if (!ShipNameTexture)
-	{
-		ShipNameTexture = UCanvasRenderTarget2D::CreateCanvasRenderTarget2D(this, UCanvasRenderTarget2D::StaticClass(), 384, 384);// 256, 256);
-		FCHECK(ShipNameTexture);
-		ShipNameTexture->OnCanvasRenderTargetUpdate.AddDynamic(this, &AFlareSpacecraft::DrawShipName);
-		ShipNameTexture->ClearColor = FLinearColor::Black;
-	}
-
-	// Customization
-	UpdateCustomization();
-
-	// If not rcs, add passive stabilization
-	if (GetDescription()->RCSCount == 0)
-	{
-		Airframe->SetLinearDamping(0.1);
-		Airframe->SetAngularDamping(0.1);
-	}
-
-	// Initialize pilot
-	if (!Pilot)
-	{
-		Pilot = NewObject<UFlareShipPilot>(this, UFlareShipPilot::StaticClass());
-	}
-
-	Pilot->Initialize(&GetData().Pilot, GetCompany(), this);
-
-	if (!StateManager)
-	{
-		StateManager = NewObject<UFlareSpacecraftStateManager>(this, UFlareSpacecraftStateManager::StaticClass());
-	}
-
-	StateManager->InitializeStateManager(this);
-	
-	// Subsystems
-	DamageSystem->Start();
-	NavigationSystem->Start();
-	DockingSystem->Start();
-	WeaponsSystem->Start();
-	DamageSystem->CalculateInitialHeat();
-
-	SmoothedVelocity = GetLinearVelocity();
-
-	if (IsPaused())
-	{
-		Airframe->SetSimulatePhysics(false);
-	}
-
-	FirstTimeSetupRun = true;
 }
 
 void AFlareSpacecraft::SimulateDayRun()
@@ -1728,6 +1714,7 @@ void AFlareSpacecraft::ReattachAndRedock()
 
 void AFlareSpacecraft::FinishLoadandReady()
 {
+
 	if (!GetNavigationSystem()->IsDocked() && !GetAttachParentActor())
 	{
 		Airframe->SetSimulatePhysics(true);
@@ -1735,8 +1722,6 @@ void AFlareSpacecraft::FinishLoadandReady()
 	}
 
 	SetLoadedAndReady();
-
-	AFlarePlayerController* PC = GetGame()->GetPC();
 }
 
 void AFlareSpacecraft::SetLoadedAndReady()
@@ -2315,16 +2300,26 @@ void AFlareSpacecraft::DrawShipName(UCanvas* TargetCanvas, int32 Width, int32 He
 		// Cleanup immatriculation on capitals
 		bool HidePrefix = GetDescription()->Size == EFlarePartSize::L;
 		FText Text = UFlareGameTools::DisplaySpacecraftName(GetParent(), HidePrefix, true);
-		
+		FString TextAsString = Text.ToString();
 		// Centering
+
+		float ScaleFactorX = 1.0f;
+		float ScaleFactorY = 1.0f;
+
+		if (TextAsString.Len() >= 14)
+		{
+			ScaleFactorX = 1.f - (0.04 * (TextAsString.Len() - 14));
+			ScaleFactorY = 1.f - (0.02 * (TextAsString.Len() - 14));
+		}
+
 		float XL, YL;
-		TargetCanvas->TextSize(ShipNameFont, Text.ToString(), XL, YL);
+		TargetCanvas->TextSize(ShipNameFont, TextAsString, XL, YL, ScaleFactorX, ScaleFactorY);
 		float X = (TargetCanvas->ClipX / 2.0f) - (XL / 2.0f);
 		float Y = (TargetCanvas->ClipY / 2.0f) - (YL / 2.0f);
 
 		// Drawing
 		FCanvasTextItem TextItem(FVector2D(X, Y), Text, ShipNameFont, FLinearColor::White);
-		TextItem.Scale = FVector2D(0.90f, 0.90f);
+		TextItem.Scale = FVector2D(ScaleFactorX, ScaleFactorY);
 		TextItem.bOutlined = true;
 		TextItem.OutlineColor = FLinearColor::Green;
 		TargetCanvas->DrawItem(TextItem);

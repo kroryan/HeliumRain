@@ -151,9 +151,6 @@ public:
 
 	void SetReserve(bool InReserve);
 
-	/** This ship was harpooned */
-	void SetHarpooned(UFlareCompany* OwnerCompany);
-
 	/** This ship was created by another ship */
 	void SetOwnerShip(UFlareSimulatedSpacecraft* OwnerShip);
 
@@ -196,6 +193,7 @@ public:
 	bool IsShipyard();
 
 	void AutoFillConstructionCargoBay();
+	void AutoFillProductionExcessConCargoBay();
 
 	bool CanScrapStation() const;
 
@@ -307,6 +305,8 @@ public:
 		SpacecraftData.NickName = NewName;
 	}
 
+	void ClearTemporaryCaches();
+
 protected:
     /*----------------------------------------------------
         Protected data
@@ -347,22 +347,30 @@ protected:
 
 	TArray<FFlareDockingInfo>									  ConnectorSlots;
 
-	UFlareSimulatedSpacecraft*								ComplexMaster;
-	TArray<UFlareSimulatedSpacecraft*>						ComplexChildren;
+	UFlareSimulatedSpacecraft*									  ComplexMaster;
+	TArray<UFlareSimulatedSpacecraft*>							  ComplexChildren;
 
 	/**Used for carrier stuffs*/
-	UFlareSimulatedSpacecraft*								ShipMaster;
-	TArray<UFlareSimulatedSpacecraft*>						ShipChildren;
-	TArray<UFlareSimulatedSpacecraft*>						InternallyDocked;
+	UFlareSimulatedSpacecraft*									  ShipMaster;
+	TArray<UFlareSimulatedSpacecraft*>							  ShipChildren;
+	TArray<UFlareSimulatedSpacecraft*>							  InternallyDocked;
 
-	bool													OwnerHasStationLicense;
+	bool													  	  OwnerHasStationLicense;
 
-	UFlareCompanyWhiteList*									ShipSelectedWhiteList;
-	float													EngineAccelerationPower = 0.f;
+	UFlareCompanyWhiteList*										  ShipSelectedWhiteList;
+	float														  EngineAccelerationPower = 0.f;
 
-	bool													CreatedInitialFactories;
+	bool														  CreatedInitialFactories;
 
-	bool													HasCompanyTransactionSource;
+	bool														  HasCompanyTransactionSource;
+
+	float														  Cached_Efficiency;
+	bool														  Cached_IsComplexElement;
+
+	TArray<FFlareSpacecraftComponentDescription*>			 	  AllComponentDescriptions;
+
+	TArray<FFlareSpacecraftComponentSave*>						  WeaponComponentPointers;
+	TArray<FFlareSpacecraftComponentDescription*>			 	  WeaponComponentDescriptions;
 
 public:
 
@@ -446,6 +454,21 @@ public:
 	inline UFlareCargoBay* GetConstructionCargoBay() const
 	{
 		return ConstructionCargoBay;
+	}
+
+	TArray<FFlareSpacecraftComponentDescription*>& GetAllComponentDescriptions()
+	{
+		return AllComponentDescriptions;
+	}
+
+	TArray<FFlareSpacecraftComponentSave*>& GetWeaponComponentPointers()
+	{
+		return WeaponComponentPointers;
+	}
+
+	TArray<FFlareSpacecraftComponentDescription*>& GetWeaponComponentDescriptions()
+	{
+		return WeaponComponentDescriptions;
 	}
 
 	UFlareCargoBay* GetActiveCargoBayFromFactory(UFlareFactory* Factory) const;

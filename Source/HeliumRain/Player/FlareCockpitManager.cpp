@@ -243,11 +243,13 @@ void AFlareCockpitManager::EnterCockpit(AFlareSpacecraft* TargetPlayerShip)
 	{
 		CockpitMesh->SetStaticMesh( FighterCockpitMeshTemplate);
 		CockpitMesh->SetMaterial(0, FighterCockpitFrameMaterialInstance);
+		IsInMilitaryCockpit = true;
 	}
 	else
 	{
 		CockpitMesh->SetStaticMesh( FreighterCockpitMeshTemplate);
 		CockpitMesh->SetMaterial(0, FreighterCockpitFrameMaterialInstance);
+		IsInMilitaryCockpit = false;
 	}
 
 	// Offset the cockpit

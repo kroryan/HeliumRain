@@ -1,20 +1,17 @@
-
 #pragma once
 
 #include "Object.h"
 #include "FlareGameTypes.h"
 #include "FlareTravel.h"
 #include "Planetarium/FlareSimulatedPlanetarium.h"
+#include "FlareWorldHelper.h"
 #include "FlareWorld.generated.h"
-
-
 
 #define MAX_RCS_REPAIR_RATIO_BY_DAY 0.25f
 #define MAX_REPAIR_RATIO_BY_DAY 0.125f
 #define MAX_ENGINE_REPAIR_RATIO_BY_DAY 0.15f
 #define MAX_WEAPON_REPAIR_RATIO_BY_DAY 0.1f
 #define MAX_REFILL_RATIO_BY_DAY 0.3f
-
 
 struct FFlareSectorSave;
 struct FFlareSectorDescription;
@@ -240,6 +237,8 @@ protected:
 	TArray<UFlareCompany*> SortedCompanyCombatValues;
 	int64 TotalCompaniesMoney;
 
+	TMap<FFlareResourceDescription*, WorldHelper::FlareResourceStats> WorldStats;
+
 public:
 	int64 WorldMoneyReference;
 
@@ -253,6 +252,11 @@ public:
 		Getters
 	----------------------------------------------------*/
 
+	inline TMap<FFlareResourceDescription*, WorldHelper::FlareResourceStats> GetWorldStats()
+	{
+		return WorldStats;
+	}
+
 	AFlareGame* GetGame() const
 	{
 		return Game;
@@ -263,7 +267,7 @@ public:
 		return TotalCompaniesMoney;
 	}
 
-		FFlareWorldSave* GetData()
+	FFlareWorldSave* GetData()
 	{
 		return &WorldData;
 	}
@@ -344,5 +348,4 @@ public:
 	int32 GetTotalWorldCombatPoint();
 
 	TMap<IncomingKey, IncomingValue> GetIncomingPlayerEnemy();
-
 };

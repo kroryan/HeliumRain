@@ -851,7 +851,7 @@ void SFlareShipMenu::LoadTargetSpacecraft()
 				if (TargetSpacecraft->GetDescription()->IsDroneCarrier)
 				{
 					AllowAutoConstructionButton->SetVisibility(CanEdit ? EVisibility::Collapsed : EVisibility::Visible);
-					if (TargetSpacecraft->GetCompany()->IsTechnologyUnlocked("auto-trade"))
+					if (TargetSpacecraft->GetCompany()->IsTechnologyUnlocked(TargetSpacecraft->GetGame()->GetCacheSystem()->ID_TechAutomatedTrading))
 					{
 						AllowExternalOrdersButton->SetVisibility(CanEdit ? EVisibility::Collapsed : EVisibility::Visible);
 					}
@@ -870,7 +870,7 @@ void SFlareShipMenu::LoadTargetSpacecraft()
 			}
 
 			// Renaming
-			bool CanRename = !TargetSpacecraft->IsStation() && !CanEdit;
+			bool CanRename = !CanEdit;
 			if (CanRename)
 			{
 				RenameBox->SetVisibility(EVisibility::Visible);
@@ -944,14 +944,19 @@ void SFlareShipMenu::LoadTargetSpacecraft()
 
 		// Setup weapon descriptions
 		WeaponDescriptions.Empty();
+
+		TArray<FFlareSpacecraftComponentSave*> WeaponComponentPointers = TargetSpacecraft->GetWeaponComponentPointers();
+		TArray<FFlareSpacecraftComponentDescription*> WeaponComponentDescriptions = TargetSpacecraft->GetWeaponComponentDescriptions();
+		int32 ComponentsNum = WeaponComponentPointers.Num();
+
 		for (int32 GroupIndex = 0; GroupIndex < ShipDesc->WeaponGroups.Num(); GroupIndex++)
 		{
 			FName SlotName = UFlareSimulatedSpacecraftWeaponsSystem::GetSlotIdentifierFromWeaponGroupIndex(ShipDesc, GroupIndex);
 
-			for (int32 i = 0; i < TargetSpacecraftData->Components.Num(); i++)
+			for (int32 i = 0; i < ComponentsNum; i++)
 			{
-				FFlareSpacecraftComponentDescription* ComponentDescription = Catalog->Get(TargetSpacecraftData->Components[i].ComponentIdentifier);
-				if (ComponentDescription->Type == EFlarePartType::Weapon && TargetSpacecraftData->Components[i].ShipSlotIdentifier == SlotName)
+				FFlareSpacecraftComponentDescription* ComponentDescription = WeaponComponentDescriptions[i];
+				if (ComponentDescription->Type == EFlarePartType::Weapon && WeaponComponentPointers[i]->ShipSlotIdentifier == SlotName)
 				{
 					FCHECK(ComponentDescription);
 					WeaponDescriptions.Add(ComponentDescription);
@@ -963,7 +968,7 @@ void SFlareShipMenu::LoadTargetSpacecraft()
 		// Setup engine descriptions
 		for (int32 i = 0; i < TargetSpacecraftData->Components.Num(); i++)
 		{
-			FFlareSpacecraftComponentDescription* ComponentDescription = Catalog->Get(TargetSpacecraftData->Components[i].ComponentIdentifier);
+			FFlareSpacecraftComponentDescription* ComponentDescription = TargetSpacecraft->GetAllComponentDescriptions()[i];
 			if (ComponentDescription->Type == EFlarePartType::RCS)
 			{
 				RCSDescription = Catalog->Get(ComponentDescription->Identifier);
@@ -1782,7 +1787,7 @@ EVisibility SFlareShipMenu::GetShipyardAllowExternalOrderVisibility() const
 	{
 		if (TargetSpacecraft->GetDescription()->IsDroneCarrier)
 		{
-			if(!TargetSpacecraft->GetCompany()->IsTechnologyUnlocked("auto-trade"))
+			if(!TargetSpacecraft->GetCompany()->IsTechnologyUnlocked(TargetSpacecraft->GetGame()->GetCacheSystem()->ID_TechAutomatedTrading))
 			{
 				return EVisibility::Collapsed;
 			}
@@ -2042,7 +2047,7 @@ bool SFlareShipMenu::IsRenameDisabled() const
 {
 	FString ShipNameData = ShipName->GetText().ToString();
 
-	if (ShipNameData.Len() > 15)
+	if (ShipNameData.Len() > 24)
 	{
 		return true;
 	}

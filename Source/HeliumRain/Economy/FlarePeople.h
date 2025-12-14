@@ -111,7 +111,7 @@ public:
 
 	double GetDifficultyModifier(UFlareCompany* Company);
 
-	float GetRessourceConsumption(FFlareResourceDescription* Resource, bool WithStock);
+	float GetResourceConsumption(FFlareResourceDescription* Resource, bool WithStock);
 
 	void GiveBirth(uint32 BirthCount);
 

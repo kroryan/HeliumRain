@@ -219,31 +219,6 @@ FText UFlareFleet::GetStatusInfo() const
 	return FText();
 }
 
-uint32 UFlareFleet::RemoveImmobilizedShips()
-{
-	TArray<UFlareSimulatedSpacecraft*> ShipToRemove;
-
-	uint32 ShipsRemoved = 0;
-	for (int ShipIndex = 0; ShipIndex < FleetShips.Num(); ShipIndex++)
-	{
-		UFlareSimulatedSpacecraft* RemovingShip = FleetShips[ShipIndex];
-		if (RemovingShip
-			&& RemovingShip != Game->GetPC()->GetPlayerShip() 
-			&& !RemovingShip->GetDescription()->IsDroneShip 
-			&& !RemovingShip->CanTravel() )
-		{
-			ShipToRemove.Add(FleetShips[ShipIndex]);
-			ShipsRemoved++;
-		}
-	}
-
-	if (ShipsRemoved < GetShipCount())
-	{
-		RemoveShips(ShipToRemove);
-	}
-	return ShipsRemoved;
-}
-
 void UFlareFleet::SetFleetColor(FLinearColor Color)
 {
 	FleetData.FleetColor = Color;
@@ -432,6 +407,31 @@ void UFlareFleet::AddShip(UFlareSimulatedSpacecraft* Ship, bool IgnoreSectorChec
 			SetSlowestShipPowerValue(Ship, Ship->GetEngineAccelerationPower());
 		}
 	}
+}
+
+uint32 UFlareFleet::RemoveImmobilizedShips()
+{
+	TArray<UFlareSimulatedSpacecraft*> ShipToRemove;
+
+	uint32 ShipsRemoved = 0;
+	for (int ShipIndex = 0; ShipIndex < FleetShips.Num(); ShipIndex++)
+	{
+		UFlareSimulatedSpacecraft* RemovingShip = FleetShips[ShipIndex];
+		if (RemovingShip
+			&& RemovingShip != Game->GetPC()->GetPlayerShip()
+			&& !RemovingShip->GetDescription()->IsDroneShip
+			&& !RemovingShip->CanTravel())
+		{
+			ShipToRemove.Add(FleetShips[ShipIndex]);
+			ShipsRemoved++;
+		}
+	}
+
+	if (ShipsRemoved < GetShipCount())
+	{
+		RemoveShips(ShipToRemove);
+	}
+	return ShipsRemoved;
 }
 
 void UFlareFleet::RemoveShips(TArray<UFlareSimulatedSpacecraft*> ShipsToRemove)
@@ -1361,7 +1361,6 @@ void UFlareFleet::RecalculateSlowestFleetShip()
 	FleetSlowestShip = nullptr;
 	FleetLowestEngineAccelerationPower = 0.f;
 
-	UFlareSpacecraftComponentsCatalog* Catalog = GetGame()->GetShipPartsCatalog();
 	for (UFlareSimulatedSpacecraft* Ship : GetShips())
 	{
 		if (!Ship->GetDescription()->IsDroneShip)

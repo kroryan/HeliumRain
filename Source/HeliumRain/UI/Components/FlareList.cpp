@@ -373,7 +373,6 @@ void SFlareList::RefreshList(bool DisableSort)
 		}
 	};
 
-
 	// Apply filters
 	FilteredObjectList.Empty();
 	TArray<UFlareFleet*> FilteredFleets;
@@ -386,14 +385,22 @@ void SFlareList::RefreshList(bool DisableSort)
 		if (ShowStationsButton->IsActive())
 		{
 			AFlareGame* Game = MenuManager->GetGame();
+			UFlareSimulatedSpacecraft* TargetLeftSpacecraft = MenuManager->GetTradeMenu()->GetTargetLeftShip();
+			UFlareCargoBay* TargetLeftCargoBay = nullptr;
+			if(TargetLeftSpacecraft)
+			{
+				TargetLeftCargoBay = TargetLeftSpacecraft->GetActiveCargoBay();
+			}
+
 			for (auto Object : ObjectList)
 			{
 				if (Object->SpacecraftPtr&&Object->SpacecraftPtr->IsStation())
 				{
-					UFlareSimulatedSpacecraft* TargetLeftSpacecraft = MenuManager->GetTradeMenu()->GetTargetLeftShip();
 					if (TargetLeftSpacecraft && TargetLeftSpacecraft->GetCompany() == MenuManager->GetPC()->GetCompany())
 					{
-						TArray<FFlareCargo>& CargoBaySlots = TargetLeftSpacecraft->GetActiveCargoBay()->GetSlots();
+						TArray<FFlareCargo>& CargoBaySlots = TargetLeftCargoBay->GetSlots();
+						UFlareCargoBay* SpacecraftPtrCargoBay = Object->SpacecraftPtr->GetActiveCargoBay();
+
 						for (int32 CargoIndex = 0; CargoIndex < CargoBaySlots.Num(); CargoIndex++)
 						{
 							FFlareCargo& Cargo = CargoBaySlots[CargoIndex];
@@ -403,7 +410,7 @@ void SFlareList::RefreshList(bool DisableSort)
 								continue;
 							}
 
-							if (Object->SpacecraftPtr->GetActiveCargoBay()->WantBuy(Cargo.Resource, TargetLeftSpacecraft->GetCompany()) && Object->SpacecraftPtr->GetActiveCargoBay()->GetFreeSpaceForResource(Cargo.Resource, TargetLeftSpacecraft->GetCompany()) > 0)
+							if (SpacecraftPtrCargoBay->WantBuy(Cargo.Resource, TargetLeftSpacecraft->GetCompany()) && SpacecraftPtrCargoBay->GetFreeSpaceForResource(Cargo.Resource, TargetLeftSpacecraft->GetCompany()) > 0)
 							{
 								FoundCargo = true;
 								FilteredObjectList.Add(Object);
@@ -413,12 +420,10 @@ void SFlareList::RefreshList(bool DisableSort)
 
 						if (!FoundCargo)
 						{
-							UFlareCargoBay* CargoBay = Object->SpacecraftPtr->GetActiveCargoBay();
-
 							for (int32 ResourceIndex = 0; ResourceIndex < Game->GetResourceCatalog()->Resources.Num(); ResourceIndex++)
 							{
 								FFlareResourceDescription* Resource = &Game->GetResourceCatalog()->Resources[ResourceIndex]->Data;
-								if (CargoBay->WantSell(Resource, TargetLeftSpacecraft->GetCompany()) && CargoBay->GetResourceQuantity(Resource, TargetLeftSpacecraft->GetCompany()) > 0)
+								if (SpacecraftPtrCargoBay->WantSell(Resource, TargetLeftSpacecraft->GetCompany()) && SpacecraftPtrCargoBay->GetResourceQuantity(Resource, TargetLeftSpacecraft->GetCompany()) > 0)
 								{
 									BuyStations.Add(Object);
 									break;

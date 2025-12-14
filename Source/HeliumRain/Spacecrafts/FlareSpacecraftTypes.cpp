@@ -168,17 +168,23 @@ bool FFlareSpacecraftDescription::CheckIsNotMilitary() const
 }
 
 
-bool FFlareSpacecraftDescription::IsComplex() const
+bool FFlareSpacecraftDescription::IsComplex(FName IdentifierCheck)
 {
-	if (Identifier == "station-complex" || StationConnectorNames.Num() > 0)
+	if (!CheckedIsComplex)
 	{
-		return true;
+		CheckedIsComplex = true;
+		if (Identifier == IdentifierCheck || StationConnectorNames.Num() > 0)
+		{
+			CalculatedIsComplex = true;
+		}
+		else
+		{
+			CalculatedIsComplex = false;
+		}
 	}
-	else
-	{
-		return false;
-	}
+	return CalculatedIsComplex;
 }
+
 
 bool FFlareSpacecraftDescription::IsResearch() const
 {

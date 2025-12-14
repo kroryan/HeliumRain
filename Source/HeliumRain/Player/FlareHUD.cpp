@@ -533,7 +533,17 @@ void AFlareHUD::DrawCockpitSubsystems(AFlareSpacecraft* PlayerShip)
 
 	// Ship name
 	FText FlyingText = UFlareGameTools::DisplaySpacecraftName(PlayerShip->GetParent());
-	FlareDrawText(FlyingText, CurrentPos, Theme.FriendlyColor, false, true);
+	FString FlyingTextAsString = FlyingText.ToString();
+	float ScaleFactorX = 1.0f;
+	float ScaleFactorY = 1.0f;
+
+	if (FlyingTextAsString.Len() >= 14)
+	{
+		ScaleFactorX = 1.f - (0.025 * (FlyingTextAsString.Len() - 14));
+		ScaleFactorY = 1.f - (0.010 * (FlyingTextAsString.Len() - 14));
+	}
+
+	FlareDrawText(FlyingText, CurrentPos, Theme.FriendlyColor, false, true, ScaleFactorX, ScaleFactorY);
 	CurrentPos += 2 * InstrumentLine;
 
 	// Ship status
@@ -575,8 +585,14 @@ void AFlareHUD::DrawCockpitSubsystems(AFlareSpacecraft* PlayerShip)
 
 	// Ship icon
 	int32 ShipIconSize = 80;
+	int32 ShipXPosition = 76;
+	if (!MenuManager->GetPC()->GetCockpitManager()->GetIsInMilitaryCockpit())
+	{
+		ShipXPosition = 60;
+	}
+
 	UTexture2D* ShipIcon = Cast<UTexture2D>(PlayerShip->GetParent()->GetDescription()->MeshPreviewBrush.GetResourceObject());
-	DrawHUDIcon(LeftInstrument + FVector2D(InstrumentSize.X - ShipIconSize, 0), ShipIconSize, ShipIcon, Theme.FriendlyColor);
+	DrawHUDIcon(LeftInstrument + FVector2D(InstrumentSize.X - ShipXPosition, 0), ShipIconSize, ShipIcon, Theme.FriendlyColor);
 }
 
 void AFlareHUD::DrawCockpitEquipment(AFlareSpacecraft* PlayerShip)
@@ -954,8 +970,19 @@ void AFlareHUD::DrawCockpitTarget(AFlareSpacecraft* PlayerShip)
 				{
 					if (!TargetShip->GetParent()->IsDestroyed())
 					{
-						FText ShipText = FText::Format(LOCTEXT("CurrentTargetFormat", "Targeting {0}"),
-							UFlareGameTools::DisplaySpacecraftName(TargetShip->GetParent()));
+						FText ShipText;
+						FString TargetNameString = UFlareGameTools::DisplaySpacecraftName(TargetShip->GetParent()).ToString();
+						if (TargetNameString.Len() >= 24)
+						{
+							ShipText = FText::Format(LOCTEXT("CurrentTargetShorterFormat", "{0}"),
+							FText::FromString(TargetNameString));
+						}
+						else
+						{
+							ShipText = FText::Format(LOCTEXT("CurrentTargetFormat", "Targeting {0}"),
+							FText::FromString(TargetNameString));
+						}
+
 
 						// Get target color
 						FLinearColor TargetColor;
@@ -2076,7 +2103,7 @@ void AFlareHUD::DrawHUDIconRotated(FVector2D Position, float DesignatorIconSize,
 		EBlendMode::BLEND_Translucent, 1.0f, false, Rotation, FVector2D::UnitVector / 2);
 }
 
-void AFlareHUD::FlareDrawText(FText Text, FVector2D Position, FLinearColor Color, bool Center, bool Large)
+void AFlareHUD::FlareDrawText(FText Text, FVector2D Position, FLinearColor Color, bool Center, bool Large, float ScaleFactorX, float ScaleFactorY)
 {
 	if (CurrentCanvas)
 	{
@@ -2113,7 +2140,7 @@ void AFlareHUD::FlareDrawText(FText Text, FVector2D Position, FLinearColor Color
 		if (Center)
 		{
 			float XL, YL;
-			CurrentCanvas->TextSize(Font, Text.ToString(), XL, YL);
+			CurrentCanvas->TextSize(Font, Text.ToString(), XL, YL, ScaleFactorX, ScaleFactorY);
 			X = CurrentCanvas->ClipX / 2.0f - XL / 2.0f + Position.X;
 			Y = CurrentCanvas->ClipY / 2.0f - YL / 2.0f + Position.Y;
 		}
@@ -2128,7 +2155,7 @@ void AFlareHUD::FlareDrawText(FText Text, FVector2D Position, FLinearColor Color
 			float ShadowIntensity = 0.05f;
 
 			FCanvasTextItem TextItem(FVector2D(X, Y), Text, Font, Color);
-			TextItem.Scale = FVector2D(1, 1);
+			TextItem.Scale = FVector2D(ScaleFactorX, ScaleFactorY);
 			TextItem.bOutlined = true;
 			TextItem.OutlineColor = FLinearColor(ShadowIntensity, ShadowIntensity, ShadowIntensity, 1.0f);
 			CurrentCanvas->DrawItem(TextItem);

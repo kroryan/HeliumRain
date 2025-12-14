@@ -541,7 +541,7 @@ void AFlarePlayerController::Load(const FFlarePlayerSave& SavePlayerData)
 {
 	// Load data
 	PlayerData = SavePlayerData;
-	Company = GetGame()->GetGameWorld()->FindCompany(PlayerData.CompanyIdentifier);
+	SetCompany(GetGame()->GetGameWorld()->FindCompany(PlayerData.CompanyIdentifier));
 	PlayerFleet = GetGame()->GetGameWorld()->FindFleet(PlayerData.PlayerFleetIdentifier);
 
 	// Load player emblem
@@ -653,7 +653,13 @@ void AFlarePlayerController::Save(FFlarePlayerSave& SavePlayerData, FFlareCompan
 
 void AFlarePlayerController::SetCompany(UFlareCompany* NewCompany)
 {
+	if (Company)
+	{
+		Company->SetPlayerCompany(false);
+	}
+
 	Company = NewCompany;
+	Company->SetPlayerCompany(true);
 }
 
 void AFlarePlayerController::SetPlayerShip(UFlareSimulatedSpacecraft* NewPlayerShip)
@@ -1311,10 +1317,15 @@ void AFlarePlayerController::CheckSectorStateChanges(UFlareSimulatedSector* Sect
 	FText BattleStateText = Sector->GetSectorBattleStateText(GetCompany());
 
 	FFlareSectorBattleState LastSectorBattleState;
-	LastSectorBattleState.Init();
-	if (LastSectorBattleStates.Contains(Sector))
+
+	FFlareSectorBattleState* FoundSameLastBattleState = LastSectorBattleStates.Find(Sector);
+	if (FoundSameLastBattleState)
 	{
-		LastSectorBattleState = LastSectorBattleStates[Sector];
+		LastSectorBattleState = *FoundSameLastBattleState;
+	}
+	else
+	{
+		LastSectorBattleState.Init();
 	}
 
 	// Ignore same states
@@ -1379,14 +1390,7 @@ void AFlarePlayerController::CheckSectorStateChanges(UFlareSimulatedSector* Sect
 			Data);
 	}
 
-	if (LastSectorBattleStates.Contains(Sector))
-	{
-		LastSectorBattleStates[Sector] = BattleState;
-	}
-	else
-	{
-		LastSectorBattleStates.Add(Sector, BattleState);
-	}
+	LastSectorBattleStates.Emplace(Sector, BattleState);
 }
 
 
@@ -2445,7 +2449,7 @@ void AFlarePlayerController::EnablePilot()
 		bool EnableRegularPilot = true;
 
 		// Try docking at target station
-		if (GetCompany()->IsTechnologyUnlocked("auto-docking"))
+		if (GetCompany()->IsTechnologyUnlocked(GetGame()->GetCacheSystem()->ID_TechAutoDocking))
 		{
 			AFlareSpacecraft* TargetSpacecraft = ShipPawn->GetCurrentTarget().SpacecraftTarget;
 			if (TargetSpacecraft && TargetSpacecraft->IsStation())
@@ -3126,7 +3130,9 @@ void AFlarePlayerController::WheelMenuShowMainMenu()
 {
 	TSharedPtr<SFlareMouseMenu> MouseMenu = GetNavHUD()->GetMouseMenu();
 
-	if (!ShipPawn->GetParent()->GetCurrentFleet())
+	UFlareSimulatedSpacecraft* ShipParent = ShipPawn->GetParent();
+
+	if (!ShipParent->GetCurrentFleet())
 	{
 		CloseWheelMenu(false);
 		return;
@@ -3144,7 +3150,7 @@ void AFlarePlayerController::WheelMenuShowMainMenu()
 	// Is a battle in progress ?
 	bool IsBattleInProgress = false;
 	bool IsDocked = ShipPawn->GetNavigationSystem()->IsDocked();
-	bool IsAutoDockingUnlocked = GetCompany()->IsTechnologyUnlocked("auto-docking");
+	bool IsAutoDockingUnlocked = GetCompany()->IsTechnologyUnlocked(GetGame()->GetCacheSystem()->ID_TechAutoDocking);
 	AFlareSpacecraft* Target = ShipPawn->GetCurrentTarget().SpacecraftTarget;
 
 	if (GetPlayerShip()->GetCurrentSector())
@@ -3154,80 +3160,79 @@ void AFlarePlayerController::WheelMenuShowMainMenu()
 
 	if (GetCurrentObjective() && !IsDocked)
 	{
-		if (GetCurrentObjective()->TargetSpacecrafts.Num() > 0)
+		if (!IsBattleInProgress)
 		{
-			for (int32 ShipIndex = 0; ShipIndex < GetCurrentObjective()->TargetSpacecrafts.Num(); ShipIndex++)
+			if (GetCurrentObjective()->TargetSpacecrafts.Num() > 0)
 			{
-				UFlareSimulatedSpacecraft* ObjectiveSpacecraft = GetCurrentObjective()->TargetSpacecrafts[ShipIndex];
-				if (ObjectiveSpacecraft->GetCurrentSector() == ShipPawn->GetParent()->GetCurrentSector() && Target != ObjectiveSpacecraft->GetActive())
+				for (int32 ShipIndex = 0; ShipIndex < GetCurrentObjective()->TargetSpacecrafts.Num(); ShipIndex++)
 				{
-					SetColor = Theme.ObjectiveColor;
-
-					if (!IsBattleInProgress)
+					UFlareSimulatedSpacecraft* ObjectiveSpacecraft = GetCurrentObjective()->TargetSpacecrafts[ShipIndex];
+					if (ObjectiveSpacecraft->GetCurrentSector() == ShipParent->GetCurrentSector() && Target != ObjectiveSpacecraft->GetActive())
 					{
+						SetColor = Theme.ObjectiveColor;
+
 						// Inspect
 						FText Text = FText::Format(LOCTEXT("InspectTargetFormat", "Details for {0}"), UFlareGameTools::DisplaySpacecraftName(ObjectiveSpacecraft));
 						MouseMenu->AddWidget(ObjectiveSpacecraft->IsStation() ? "Mouse_Inspect_Station" : "Mouse_Inspect_Ship", Text,
-							FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::InspectTargetSpacecraft, ObjectiveSpacecraft->GetActive()), false, SetColor);
-
+						FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::InspectTargetSpacecraft, ObjectiveSpacecraft->GetActive()), false, SetColor);
 					}
 				}
 			}
-		}
 
-		if (GetCurrentObjective()->TargetSectors.Num() > 0 && ShipPawn->GetParent()->GetCurrentFleet()->CanTravel())
-		{
-			for (int32 SectorIndex = 0; SectorIndex < GetCurrentObjective()->TargetSectors.Num(); SectorIndex++)
+			if (GetCurrentObjective()->TargetSectors.Num() > 0 && ShipParent->GetCurrentFleet()->CanTravel())
 			{
-
-				UFlareSimulatedSector* ObjectiveSector = GetCurrentObjective()->TargetSectors[SectorIndex];
-				if (ObjectiveSector != GetPlayerShip()->GetCurrentSector() && (!GetPlayerShip()->GetCurrentFleet()->GetCurrentTravel() || (GetPlayerShip()->GetCurrentFleet()->GetCurrentTravel() && GetPlayerShip()->GetCurrentFleet()->GetCurrentTravel()->GetDestinationSector() != ObjectiveSector)))
-
+				for (int32 SectorIndex = 0; SectorIndex < GetCurrentObjective()->TargetSectors.Num(); SectorIndex++)
 				{
-					FText NameText = FText();
-					FFlareSectorBattleState BattleState = ObjectiveSector->GetSectorBattleState(GetCompany());
 
-					if (BattleState.InBattle)
-					{
-						if (BattleState.InActiveFight)
-						{
-							NameText = FText::Format(LOCTEXT("ConfirmBattleMouseMenuFormat", "{0}\nBattle in progress."),
-								ObjectiveSector->GetSectorName());
-						}
-						else if (!BattleState.InFight && !BattleState.BattleWon)
-						{
-							NameText = FText::Format(LOCTEXT("ConfirmBattleLostMouseMenuFormat", "{0}\nBattle Lost"),
-								ObjectiveSector->GetSectorName());
-						}
-					}
-					else if (BattleState.HasDanger)
-					{
-						{
-							NameText = FText::Format(LOCTEXT("ConfirmBattleLostMouseMenuFormat", "{0}\nDanger Present"),
-								ObjectiveSector->GetSectorName());
-						}
-					}
-					else
-					{
-						NameText = ObjectiveSector->GetSectorName();
-					}
+					UFlareSimulatedSector* ObjectiveSector = GetCurrentObjective()->TargetSectors[SectorIndex];
+					if (ObjectiveSector != GetPlayerShip()->GetCurrentSector() && (!GetPlayerShip()->GetCurrentFleet()->GetCurrentTravel() || (GetPlayerShip()->GetCurrentFleet()->GetCurrentTravel() && GetPlayerShip()->GetCurrentFleet()->GetCurrentTravel()->GetDestinationSector() != ObjectiveSector)))
 
-					SetColor = Theme.ObjectiveColor;
-
-					TArray<FFlareSectorCelestialBodyDescription>& OrbitalBodies = GetGame()->GetOrbitalBodies()->OrbitalBodies;
-					for (int32 BodyIndex = 0; BodyIndex < OrbitalBodies.Num(); BodyIndex++)
 					{
-						FFlareSectorCelestialBodyDescription Body = OrbitalBodies[BodyIndex];
-						if (ObjectiveSector->GetOrbitParameters()->CelestialBodyIdentifier == Body.CelestialBodyIdentifier)
-						{
-							MouseMenu->AddWidget("Orbit", NameText,
-								FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::WheelMenuConfirmTravelSelection, Body, ObjectiveSector), false, SetColor);
-							break;
-						}
-					}
+						FText NameText = FText();
+						FFlareSectorBattleState BattleState = ObjectiveSector->GetSectorBattleState(GetCompany());
 
-					UFlareSimulatedPlanetarium* Planetarium = GetGame()->GetGameWorld()->GetPlanerarium();
-					FFlareCelestialBody* CelestialBody = Planetarium->FindCelestialBody(ObjectiveSector->GetOrbitParameters()->CelestialBodyIdentifier);
+						if (BattleState.InBattle)
+						{
+							if (BattleState.InActiveFight)
+							{
+								NameText = FText::Format(LOCTEXT("ConfirmBattleMouseMenuFormat", "{0}\nBattle in progress."),
+									ObjectiveSector->GetSectorName());
+							}
+							else if (!BattleState.InFight && !BattleState.BattleWon)
+							{
+								NameText = FText::Format(LOCTEXT("ConfirmBattleLostMouseMenuFormat", "{0}\nBattle Lost"),
+									ObjectiveSector->GetSectorName());
+							}
+						}
+						else if (BattleState.HasDanger)
+						{
+							{
+								NameText = FText::Format(LOCTEXT("ConfirmBattleLostMouseMenuFormat", "{0}\nDanger Present"),
+									ObjectiveSector->GetSectorName());
+							}
+						}
+						else
+						{
+							NameText = ObjectiveSector->GetSectorName();
+						}
+
+						SetColor = Theme.ObjectiveColor;
+
+						TArray<FFlareSectorCelestialBodyDescription>& OrbitalBodies = GetGame()->GetOrbitalBodies()->OrbitalBodies;
+						for (int32 BodyIndex = 0; BodyIndex < OrbitalBodies.Num(); BodyIndex++)
+						{
+							FFlareSectorCelestialBodyDescription Body = OrbitalBodies[BodyIndex];
+							if (ObjectiveSector->GetOrbitParameters()->CelestialBodyIdentifier == Body.CelestialBodyIdentifier)
+							{
+								MouseMenu->AddWidget("Orbit", NameText,
+									FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::WheelMenuConfirmTravelSelection, Body, ObjectiveSector), false, SetColor);
+								break;
+							}
+						}
+
+						UFlareSimulatedPlanetarium* Planetarium = GetGame()->GetGameWorld()->GetPlanerarium();
+						FFlareCelestialBody* CelestialBody = Planetarium->FindCelestialBody(ObjectiveSector->GetOrbitParameters()->CelestialBodyIdentifier);
+					}
 				}
 			}
 		}
@@ -3316,7 +3321,7 @@ void AFlarePlayerController::WheelMenuShowMainMenu()
 		// Fleet controls
 		if (ShipPawn->GetDescription()->IsDroneCarrier)
 		{
-			if (ShipPawn->GetParent()->GetShipChildren().Num() > 0)
+			if (ShipParent->GetShipChildren().Num() > 0)
 			{
 				if (ShipPawn->GetWantUndockInternalShips())
 				{
@@ -3331,24 +3336,24 @@ void AFlarePlayerController::WheelMenuShowMainMenu()
 			}
 		}
 
-		if (ShipPawn->GetParent()->GetCurrentFleet()->GetMilitaryShipCount() > 0)
+		if (ShipParent->GetCurrentFleet()->GetMilitaryShipCount() > 0)
 		{
 			MouseMenu->AddWidget("Mouse_Align", LOCTEXT("Fleet", "Fleet"),
 			FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::WheelMenuShowFleetMenu), false, SetColor);
 		}
 		else
 		{
-			if (!GetGame()->IsSkirmish())
+			if (!GetGame()->IsSkirmish() && !IsBattleInProgress)
 			{
-				if (ShipPawn->GetParent()->GetCurrentFleet()->CanTravel())
+				if (ShipParent->GetCurrentFleet()->CanTravel())
 				{
 					MouseMenu->AddWidget("Orbit", LOCTEXT("Travel", "Travel"),
 						FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::WheelMenuShowTravelMainMenu), false, SetColor);
 				}
-				if (ShipPawn->GetParent()->GetCurrentFleet()->FleetNeedsRepair() || ShipPawn->GetParent()->GetCurrentFleet()->FleetNeedsRefill())
+				if (ShipParent->GetCurrentFleet()->FleetNeedsRepair() || ShipParent->GetCurrentFleet()->FleetNeedsRefill())
 				{
-					FText RepairText = ShipPawn->GetParent()->GetCurrentFleet()->GetRepairText();
-					FText RefillText = ShipPawn->GetParent()->GetCurrentFleet()->GetRefillText();
+					FText RepairText = ShipParent->GetCurrentFleet()->GetRepairText();
+					FText RefillText = ShipParent->GetCurrentFleet()->GetRefillText();
 					FText Text = FText::Format(LOCTEXT("RepairFleetFormat", "{0}\n{1}"),
 						RepairText, RefillText);
 
@@ -3363,7 +3368,7 @@ void AFlarePlayerController::WheelMenuShowMainMenu()
 	{
 		// Upgrade if possible
 		AFlareSpacecraft* DockStation = ShipPawn->GetNavigationSystem()->GetDockStation();
-		if (ShipPawn->GetParent()->GetCurrentSector()->CanUpgrade(ShipPawn->GetParent()->GetCompany())
+		if (ShipParent->GetCurrentSector()->CanUpgrade(ShipParent->GetCompany())
 			&& (IsAutoDockingUnlocked || (DockStation && DockStation->GetParent()->HasCapability(EFlareSpacecraftCapability::Upgrade))))
 		{
 			UFlareSpacecraftComponentsCatalog* Catalog = GetGame()->GetShipPartsCatalog();
@@ -3373,9 +3378,11 @@ void AFlarePlayerController::WheelMenuShowMainMenu()
 			FFlareSpacecraftComponentDescription* EnginePartDesc = NULL;
 			FFlareSpacecraftComponentDescription* RCSPartDesc = NULL;
 
-			for (int32 Index = 0; Index < ShipPawn->GetParent()->GetData().Components.Num(); Index++)
+			//Todo: should just know the rcs/engine part instead of searching for it
+			for (int32 Index = 0; Index < ShipParent->GetData().Components.Num(); Index++)
 			{
-				FFlareSpacecraftComponentDescription* Desc = Catalog->Get(ShipPawn->GetParent()->GetData().Components[Index].ComponentIdentifier);
+				FFlareSpacecraftComponentDescription* Desc = ShipParent->GetAllComponentDescriptions()[Index];
+
 				if (Desc)
 				{
 					if (Desc->Type == EFlarePartType::RCS)
@@ -3389,31 +3396,31 @@ void AFlarePlayerController::WheelMenuShowMainMenu()
 				}
 			}
 
-			Catalog->GetEngineList(PartListData, ShipPawn->GetParent()->GetDescription()->Size, ShipPawn->GetParent()->GetCompany(), ShipPawn->GetParent(), EnginePartDesc);
+			Catalog->GetEngineList(PartListData, ShipParent->GetDescription()->Size, ShipParent->GetCompany(), ShipParent, EnginePartDesc);
 
 			if (PartListData.Num() == 0)
 			{
-				Catalog->GetRCSList(PartListData, ShipPawn->GetParent()->GetDescription()->Size, ShipPawn->GetParent()->GetCompany(), ShipPawn->GetParent(), RCSPartDesc);
+				Catalog->GetRCSList(PartListData, ShipParent->GetDescription()->Size, ShipParent->GetCompany(), ShipParent, RCSPartDesc);
 			}
 
 			if (PartListData.Num() == 0)
 			{
-				for (int32 GroupIndex = 0; GroupIndex < ShipPawn->GetParent()->GetDescription()->WeaponGroups.Num(); GroupIndex++)
+				for (int32 GroupIndex = 0; GroupIndex < ShipParent->GetDescription()->WeaponGroups.Num(); GroupIndex++)
 				{
-					FName SlotName = UFlareSimulatedSpacecraftWeaponsSystem::GetSlotIdentifierFromWeaponGroupIndex(ShipPawn->GetParent()->GetDescription(), GroupIndex);
-					FFlareSpacecraftSlotGroupDescription* WeaponGroupDesc = &ShipPawn->GetParent()->GetDescription()->WeaponGroups[GroupIndex];
+					FName SlotName = UFlareSimulatedSpacecraftWeaponsSystem::GetSlotIdentifierFromWeaponGroupIndex(ShipParent->GetDescription(), GroupIndex);
+					FFlareSpacecraftSlotGroupDescription* WeaponGroupDesc = &ShipParent->GetDescription()->WeaponGroups[GroupIndex];
 
 					FLOGV("AFlarePlayerController::WheelMenuShowMainMenu : Looking at weapon groups %d, %s", GroupIndex, *SlotName.ToString());
 
-					for (int32 Index = 0; Index < ShipPawn->GetParent()->GetData().Components.Num(); Index++)
+					for (int32 Index = 0; Index < ShipParent->GetData().Components.Num(); Index++)
 					{
-						FFlareSpacecraftComponentDescription* Desc = Catalog->Get(ShipPawn->GetParent()->GetData().Components[Index].ComponentIdentifier);
+						FFlareSpacecraftComponentDescription* Desc = Catalog->Get(ShipParent->GetData().Components[Index].ComponentIdentifier);
 						if (Desc)
 						{
-							if (ShipPawn->GetParent()->GetData().Components[Index].ShipSlotIdentifier == SlotName)
+							if (ShipParent->GetData().Components[Index].ShipSlotIdentifier == SlotName)
 							{
 								FLOGV("AFlarePlayerController::WheelMenuShowMainMenu : Found same identifier %s", *Desc->Name.ToString());
-								Catalog->GetWeaponList(PartListData, ShipPawn->GetParent()->GetDescription()->Size, ShipPawn->GetParent()->GetCompany(), ShipPawn->GetParent(), WeaponGroupDesc, Desc);
+								Catalog->GetWeaponList(PartListData, ShipParent->GetDescription()->Size, ShipParent->GetCompany(), ShipParent, WeaponGroupDesc, Desc);
 								break;
 							}
 						}
@@ -3429,7 +3436,7 @@ void AFlarePlayerController::WheelMenuShowMainMenu()
 		}
 
 		// Trade if possible
-		if (ShipPawn->GetParent()->GetCurrentFleet()->GetFleetCapacity() > 0
+		if (ShipParent->GetCurrentFleet()->GetFleetCapacity() > 0
 			&& (IsDocked || IsAutoDockingUnlocked))
 		{
 			MouseMenu->AddWidget("Trade_Button", LOCTEXT("Trade", "Trade"),
@@ -3488,7 +3495,13 @@ void AFlarePlayerController::WheelMenuShowFleetMenu()
 		FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::SetTacticForCurrentGroup, EFlareCombatTactic::DestroyCivilians),
 		CurrentTacticsForGroup == EFlareCombatTactic::DestroyCivilians, SetColor);
 
-	if (!GetGame()->IsSkirmish())
+	bool IsBattleInProgress = false;
+	if (GetPlayerShip()->GetCurrentSector())
+	{
+		IsBattleInProgress = GetPlayerShip()->GetCurrentSector()->IsPlayerBattleInProgress();
+	}
+
+	if (!GetGame()->IsSkirmish() && !IsBattleInProgress)
 	{
 		if (ShipPawn->GetParent()->GetCurrentFleet()->CanTravel())
 		{

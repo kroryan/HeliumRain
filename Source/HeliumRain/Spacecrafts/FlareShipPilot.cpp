@@ -157,7 +157,9 @@ void UFlareShipPilot::TickPilot(float DeltaSeconds)
 
 	if(!Ship->GetParent()->GetDamageSystem()->IsUncontrollable())
 	{
-		if (TotalTimeAutoPiloting >= 3000)
+		FFlareShipCommandData CurrentCommand = Ship->GetNavigationSystem()->GetCurrentCommand();
+
+		if (TotalTimeAutoPiloting >= 3000 || (CurrentCommand.Type == EFlareCommandDataType::CDT_Location && TotalTimeAutoPiloting >= 480))
 		{
 			Ship->GetNavigationSystem()->AbortAllCommands();
 		}
@@ -1701,9 +1703,7 @@ void UFlareShipPilot::FindBestHostileTarget(EFlareCombatTactic::Type Tactic)
 
 		UFlareWeapon* Weapon = Cast<UFlareWeapon>(Ship->GetActiveSpacecraftComponents()[ComponentIndex]);
 		if (Weapon)
-//		if (ComponentDescription->Type == EFlarePartType::Weapon)
 		{
-//			float AmmoRatio = float(ComponentDescription->WeaponCharacteristics.AmmoCapacity - ComponentData->Weapon.FiredAmmo) / ComponentDescription->WeaponCharacteristics.AmmoCapacity;
 			float AmmoRatio = float(Weapon->GetCurrentAmmo() / Weapon->GetDescription()->WeaponCharacteristics.AmmoCapacity);
 			if (AmmoRatio < MinAmmoRatio)
 			{

@@ -286,21 +286,23 @@ bool UFlareBattle::SimulateSmallShipTurn(UFlareSimulatedSpacecraft* Ship)
 	Ship->GetWeaponsSystem()->GetTargetPreference(&TargetPreferences.IsSmall, &TargetPreferences.IsLarge, &TargetPreferences.IsUncontrollableCivil, &TargetPreferences.IsUncontrollableSmallMilitary, &TargetPreferences.IsUncontrollableLargeMilitary, &TargetPreferences.IsNotUncontrollable, &TargetPreferences.IsStation, &TargetPreferences.IsHarpooned);
 	
 	float MinAmmoRatio = 1.f;
+	// GetData().Components.Num()
+	TArray<FFlareSpacecraftComponentSave*> WeaponComponentPointers = Ship->GetWeaponComponentPointers();
+	TArray<FFlareSpacecraftComponentDescription*> WeaponComponentDescriptions = Ship->GetWeaponComponentDescriptions();
+	int32 ComponentsNum = WeaponComponentPointers.Num();
 
-	for (int32 ComponentIndex = 0; ComponentIndex < Ship->GetData().Components.Num(); ComponentIndex++)
+	for (int32 ComponentIndex = 0; ComponentIndex < ComponentsNum; ComponentIndex++)
 	{
-		FFlareSpacecraftComponentSave* ComponentData = &Ship->GetData().Components[ComponentIndex];
-		FFlareSpacecraftComponentDescription* ComponentDescription = Catalog->Get(ComponentData->ComponentIdentifier);
+		FFlareSpacecraftComponentSave* ComponentData = WeaponComponentPointers[ComponentIndex];
+		FFlareSpacecraftComponentDescription* ComponentDescription = WeaponComponentDescriptions[ComponentIndex];
 
-		if (ComponentDescription->Type == EFlarePartType::Weapon)
+		float AmmoRatio = float(ComponentDescription->WeaponCharacteristics.AmmoCapacity - ComponentData->Weapon.FiredAmmo) /  ComponentDescription->WeaponCharacteristics.AmmoCapacity;
+		if(AmmoRatio < MinAmmoRatio)
 		{
-			float AmmoRatio = float(ComponentDescription->WeaponCharacteristics.AmmoCapacity - ComponentData->Weapon.FiredAmmo) /  ComponentDescription->WeaponCharacteristics.AmmoCapacity;
-			if(AmmoRatio < MinAmmoRatio)
-			{
-				MinAmmoRatio = AmmoRatio;
-			}
+			MinAmmoRatio = AmmoRatio;
 		}
 	}
+
 	//FLOGV("%s MinAmmoRatio=%f", *Ship->GetImmatriculation().ToString(), MinAmmoRatio);
 
 	if(MinAmmoRatio <0.9)
@@ -348,13 +350,17 @@ bool UFlareBattle::SimulateLargeShipTurn(UFlareSimulatedSpacecraft* Ship)
 {
 	bool HasAttacked = false;
 
-	// Fire each turret individualy
-	for (int32 ComponentIndex = 0; ComponentIndex < Ship->GetData().Components.Num(); ComponentIndex++)
-	{
-		FFlareSpacecraftComponentSave* ComponentData = &Ship->GetData().Components[ComponentIndex];
-		FFlareSpacecraftComponentDescription* ComponentDescription = Catalog->Get(ComponentData->ComponentIdentifier);
+	TArray<FFlareSpacecraftComponentSave*> WeaponComponentPointers = Ship->GetWeaponComponentPointers();
+	TArray<FFlareSpacecraftComponentDescription*> WeaponComponentDescriptions = Ship->GetWeaponComponentDescriptions();
+	int32 ComponentsNum = WeaponComponentPointers.Num();
 
-		if(ComponentDescription->Type != EFlarePartType::Weapon || !ComponentDescription->WeaponCharacteristics.TurretCharacteristics.IsTurret)
+	// Fire each turret individualy
+	for (int32 ComponentIndex = 0; ComponentIndex < ComponentsNum; ComponentIndex++)
+	{
+		FFlareSpacecraftComponentSave* ComponentData = WeaponComponentPointers[ComponentIndex];
+		FFlareSpacecraftComponentDescription* ComponentDescription = WeaponComponentDescriptions[ComponentIndex];
+
+		if(!ComponentDescription->WeaponCharacteristics.TurretCharacteristics.IsTurret)
 		{
 			// Ignore if not a turret
 			continue;
@@ -391,8 +397,6 @@ bool UFlareBattle::SimulateLargeShipTurn(UFlareSimulatedSpacecraft* Ship)
 		TargetPreferences.IsLarge = ComponentDescription->WeaponCharacteristics.AntiLargeShipValue;
 		TargetPreferences.IsSmall = ComponentDescription->WeaponCharacteristics.AntiSmallShipValue;
 		TargetPreferences.IsStation = ComponentDescription->WeaponCharacteristics.AntiStationValue;
-
-
 
 		float AmmoRatio = float(ComponentDescription->WeaponCharacteristics.AmmoCapacity - ComponentData->Weapon.FiredAmmo) /  ComponentDescription->WeaponCharacteristics.AmmoCapacity;
 
@@ -512,7 +516,7 @@ UFlareSimulatedSpacecraft* UFlareBattle::GetBestTarget(UFlareSimulatedSpacecraft
 			StateScore *= Preferences.IsLarge;
 		}
 
-		else if (ShipCandidate->GetSize() == EFlarePartSize::S)
+		else// if (ShipCandidate->GetSize() == EFlarePartSize::S)
 		{
 			StateScore *= Preferences.IsSmall;
 		}
@@ -535,7 +539,7 @@ UFlareSimulatedSpacecraft* UFlareBattle::GetBestTarget(UFlareSimulatedSpacecraft
 			StateScore *= Preferences.IsNotMilitary;
 		}
 
-		if(ShipCandidate->IsMilitaryArmed()  && !ShipCandidate->GetDamageSystem()->IsDisarmed())
+		if(ShipCandidate->IsMilitaryArmed() && !ShipCandidate->GetDamageSystem()->IsDisarmed(true))
 		{
 			StateScore *= Preferences.IsDangerous;
 		}
@@ -544,7 +548,7 @@ UFlareSimulatedSpacecraft* UFlareBattle::GetBestTarget(UFlareSimulatedSpacecraft
 			StateScore *= Preferences.IsNotDangerous;
 		}
 
-		if (ShipCandidate->GetDamageSystem()->IsStranded())
+		if (ShipCandidate->GetDamageSystem()->IsStranded(true))
 		{
 			StateScore *= Preferences.IsStranded;
 		}
@@ -553,7 +557,7 @@ UFlareSimulatedSpacecraft* UFlareBattle::GetBestTarget(UFlareSimulatedSpacecraft
 			StateScore *= Preferences.IsNotStranded;
 		}
 
-		if (ShipCandidate->GetDamageSystem()->IsUncontrollable() && ShipCandidate->GetDamageSystem()->IsDisarmed())
+		if (ShipCandidate->GetDamageSystem()->IsUncontrollable(true) && ShipCandidate->GetDamageSystem()->IsDisarmed(true))
 		{
 			if(ShipCandidate->IsMilitary())
 			{
@@ -576,10 +580,9 @@ UFlareSimulatedSpacecraft* UFlareBattle::GetBestTarget(UFlareSimulatedSpacecraft
 			StateScore *= Preferences.IsNotUncontrollable;
 		}
 
-//		if(ShipCandidate->IsHarpooned())
 		if(ShipCandidate->GetCapturePointsMap().Num() > 0)
 		{
-			if(ShipCandidate->GetDamageSystem()->IsUncontrollable())
+			if(ShipCandidate->GetDamageSystem()->IsUncontrollable(true))
 			{
 				// Never target harpooned uncontrollable ships
 				continue;
@@ -723,7 +726,7 @@ bool UFlareBattle::SimulateShipWeaponAttack(UFlareSimulatedSpacecraft* Ship, FFl
 		// Drop one bomb with a hit probability of (1 + usable ratio + isUncontrollable)/3
 		if (ShipTarget)
 		{
-			if (FMath::FRand() < (1 + UsageRatio + (ShipTarget->GetDamageSystem()->IsUncontrollable() ? 1.f : 0.f)))
+			if (FMath::FRand() < (1 + UsageRatio + (ShipTarget->GetDamageSystem()->IsUncontrollable(true) ? 1.f : 0.f)))
 			{
 				// Apply bomb damage
 				SimulateBombDamage(WeaponDescription, ShipTarget, Ship);
@@ -803,7 +806,6 @@ void UFlareBattle::SimulateBombDamage(FFlareSpacecraftComponentDescription* Weap
 	 || (WeaponDescription->WeaponCharacteristics.DamageType == EFlareShellDamageType::HeavySalvage && Target->GetDescription()->Size == EFlarePartSize::L)))
 	{
 		FLOGV("UFlareBattle::SimulateBombDamage : salvaging %s for %s", *Target->GetImmatriculation().ToString(), *DamageSource->GetCompany()->GetCompanyName().ToString());
-//		Target->SetHarpooned(DamageSource->GetCompany());
 		DamageSource->GetCompany()->StartCapture(Target, false);
 	}
 }
@@ -838,7 +840,8 @@ void UFlareBattle::ApplyDamage(UFlareSimulatedSpacecraft* Target, float Energy, 
 	}
 
 	FFlareSpacecraftComponentSave* TargetComponent = &Target->GetData().Components[ComponentIndex];
-	FFlareSpacecraftComponentDescription* ComponentDescription = Catalog->Get(TargetComponent->ComponentIdentifier);
+	FFlareSpacecraftComponentDescription* ComponentDescription = Target->GetAllComponentDescriptions()[ComponentIndex];
+
 	CombatLog::SpacecraftDamaged(Target, Energy, 0, FVector::ZeroVector, DamageType, DamageSource->GetCompany(), "SimulatedBattle");
 	Target->GetDamageSystem()->ApplyDamage(ComponentDescription, TargetComponent, Energy, DamageType, DamageSource);
 }
@@ -854,14 +857,14 @@ int32 UFlareBattle::GetBestTargetComponent(UFlareSimulatedSpacecraft* TargetSpac
 	float RCSWeight = 1;
 	float InternalWeight = 1;
 
-	if (!TargetSpacecraft->GetDamageSystem()->IsDisarmed())
+	if (!TargetSpacecraft->GetDamageSystem()->IsDisarmed(true))
 	{
 		WeaponWeight = 20;
 		PodWeight = 8;
 		RCSWeight = 1;
 		InternalWeight = 1;
 	}
-	else if (!TargetSpacecraft->GetDamageSystem()->IsStranded())
+	else if (!TargetSpacecraft->GetDamageSystem()->IsStranded(true))
 	{
 		PodWeight = 8;
 		RCSWeight = 1;
@@ -874,17 +877,19 @@ int32 UFlareBattle::GetBestTargetComponent(UFlareSimulatedSpacecraft* TargetSpac
 	}
 
 	TArray<int32> ComponentSelection;
+
+	TArray<FFlareSpacecraftComponentDescription*> AllComponentDescriptions = TargetSpacecraft->GetAllComponentDescriptions();
+	UFlareSimulatedSpacecraftDamageSystem* TargetDamageSystem = TargetSpacecraft->GetDamageSystem();
+
 	for (int32 ComponentIndex = 0; ComponentIndex < TargetSpacecraft->GetData().Components.Num(); ComponentIndex++)
 	{
 		FFlareSpacecraftComponentSave* TargetComponent = &TargetSpacecraft->GetData().Components[ComponentIndex];
-
-		FFlareSpacecraftComponentDescription* ComponentDescription = Catalog->Get(TargetComponent->ComponentIdentifier);
-
-		float UsageRatio = TargetSpacecraft->GetDamageSystem()->GetUsableRatio(ComponentDescription, TargetComponent);
-		float DamageRatio = TargetSpacecraft->GetDamageSystem()->GetDamageRatio(ComponentDescription, TargetComponent);
+		FFlareSpacecraftComponentDescription* ComponentDescription = AllComponentDescriptions[ComponentIndex];
 
 		if (ComponentDescription)
 		{
+			float UsageRatio = TargetDamageSystem->GetUsableRatio(ComponentDescription, TargetComponent);
+
 			if (UsageRatio > 0)
 			{
 				if (ComponentDescription->Type == EFlarePartType::RCS)
@@ -923,9 +928,13 @@ int32 UFlareBattle::GetBestTargetComponent(UFlareSimulatedSpacecraft* TargetSpac
 					}
 				}
 			}
-			else if (DamageRatio > 0)
+			else
 			{
-				ComponentSelection.Add(ComponentIndex);
+				float DamageRatio = TargetDamageSystem->GetDamageRatio(ComponentDescription, TargetComponent);
+				if (DamageRatio > 0)
+				{
+					ComponentSelection.Add(ComponentIndex);
+				}
 			}
 		}
 	}

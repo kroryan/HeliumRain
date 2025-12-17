@@ -161,8 +161,6 @@ void UFlareSpacecraftDamageSystem::SetDead()
 
 void UFlareSpacecraftDamageSystem::OnSpacecraftDestroyed(bool SuppressMessages, bool ForceExplosion)
 {
-	AFlarePlayerController* PC = Spacecraft->GetGame()->GetPC();
-
 	// Lost player ship
 	if (!SuppressMessages)
 	{
@@ -311,8 +309,6 @@ void UFlareSpacecraftDamageSystem::OnSpacecraftDestroyed(bool SuppressMessages, 
 
 void UFlareSpacecraftDamageSystem::OnControlLost()
 {
-	AFlarePlayerController* PC = Spacecraft->GetGame()->GetPC();
-
 	// Lost player ship
 	if (Spacecraft == PC->GetShipPawn())
 	{
@@ -429,8 +425,6 @@ void UFlareSpacecraftDamageSystem::OnControlLost()
 
 void UFlareSpacecraftDamageSystem::CheckRecovery()
 {
-	AFlarePlayerController* PC = Spacecraft->GetGame()->GetPC();
-
 	// Check if it the last ship
 	bool EmptyFleet = true;
 	for (UFlareSimulatedSpacecraft* Ship : PC->GetPlayerFleet()->GetShips())
@@ -492,8 +486,6 @@ void UFlareSpacecraftDamageSystem::OnCollision(class AActor* Other, FVector HitL
 		Spacecraft->GetComplex()->GetDamageSystem()->OnCollision(Other, HitLocation, NormalImpulse);
 		return;
 	}
-
-	AFlarePlayerController* PC = Spacecraft->GetGame()->GetPC();
 
 	// Ignore debris
 	AStaticMeshActor* OtherActor = Cast<AStaticMeshActor>(Other);

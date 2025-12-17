@@ -965,7 +965,7 @@ bool UFlareQuestManager::IsMilitaryTarget(UFlareSimulatedSpacecraft const* Space
 
 bool UFlareQuestManager::IsUnderMilitaryContractNoCache(UFlareSimulatedSector* Sector,  UFlareCompany* Company)
 {
-	for(UFlareQuest* OngoingQuest : GetOngoingQuests())
+	for(UFlareQuest* OngoingQuest : OngoingQuests)
 	{
 		UFlareQuestGeneratedCargoHunt2* CargoHunt = Cast<UFlareQuestGeneratedCargoHunt2>(OngoingQuest);
 		if(CargoHunt)
@@ -1004,7 +1004,6 @@ bool UFlareQuestManager::IsUnderMilitaryContractNoCache(UFlareSimulatedSector* S
 			{
 				continue;
 			}
-
 
 			for(UFlareSimulatedSpacecraft* Ship : Sector->GetSectorShips())
 			{
@@ -1093,14 +1092,14 @@ bool UFlareQuestManager::IsUnderMilitaryContractNoCache(UFlareSimulatedSector* S
 
 bool UFlareQuestManager::IsMilitaryTargetNoCache(UFlareSimulatedSpacecraft const* Spacecraft)
 {
-	for(UFlareQuest* OngoingQuest : GetOngoingQuests())
+	for(UFlareQuest* OngoingQuest : OngoingQuests)
 	{
 		UFlareQuestGeneratedCargoHunt2* CargoHunt = Cast<UFlareQuestGeneratedCargoHunt2>(OngoingQuest);
 		if(CargoHunt)
 		{
 			if(Spacecraft->IsMilitary())
 			{
-		continue;
+				continue;
 			}
 
 			if(CargoHunt->GetInitData()->GetName("hostile-company") != Spacecraft->GetCompany()->GetIdentifier())
@@ -1137,7 +1136,7 @@ bool UFlareQuestManager::IsMilitaryTargetNoCache(UFlareSimulatedSpacecraft const
 
 bool UFlareQuestManager::IsAllowedToDestroy(UFlareSimulatedSpacecraft const* Spacecraft)
 {
-	for(UFlareQuest* OngoingQuest : GetOngoingQuests())
+	for(UFlareQuest* OngoingQuest : OngoingQuests)
 	{
 		UFlareQuestGeneratedCargoHunt2* CargoHunt = Cast<UFlareQuestGeneratedCargoHunt2>(OngoingQuest);
 		if(CargoHunt)

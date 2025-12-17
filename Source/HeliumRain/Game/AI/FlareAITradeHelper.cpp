@@ -65,12 +65,12 @@ void AITradeHelper::CompanyAutoTrade(UFlareCompany* Company)
 
 	if (ValidFleets.Num() > 0)
 	{
-		TMap<UFlareSimulatedSector*, SectorVariation> WorldResourceVariation;
+		TMap<UFlareSimulatedSector*, FSectorVariation> WorldResourceVariation;
 		WorldResourceVariation.Reserve(Company->GetVisitedSectors().Num());
 		for (int32 SectorIndex = 0; SectorIndex < Company->GetVisitedSectors().Num(); SectorIndex++)
 		{
 			UFlareSimulatedSector* Sector = Company->GetVisitedSectors()[SectorIndex];
-			SectorVariation Variation = AITradeHelper::ComputeSectorResourceVariation(Company, Sector, false);
+			FSectorVariation Variation = AITradeHelper::ComputeSectorResourceVariation(Company, Sector, false);
 
 			WorldResourceVariation.Add(Sector, Variation);
 			//DumpSectorResourceVariation(Sector, &Variation);
@@ -142,7 +142,7 @@ UFlareSimulatedSpacecraft* AITradeHelper::FindBestMasterShip(int32& UsableShipCo
 	return MasterShip;
 }
 
-void AITradeHelper::FleetAutoTrade(UFlareFleet* Fleet, TMap<UFlareSimulatedSector*, SectorVariation>& WorldResourceVariation)
+void AITradeHelper::FleetAutoTrade(UFlareFleet* Fleet, TMap<UFlareSimulatedSector*, FSectorVariation>& WorldResourceVariation)
 {
 	if(Fleet->IsTrading() || Fleet->IsTraveling())
 	{
@@ -295,7 +295,7 @@ TArray<UFlareSimulatedSpacecraft*> AITradeHelper::FindIdleCargos(UFlareCompany* 
 	return IdleCargos;
 }
 
-SectorDeal AITradeHelper::FindBestDealForShipFromSector(UFlareSimulatedSpacecraft* Ship, UFlareSimulatedSector* SectorA, SectorDeal* DealToBeat, TMap<UFlareSimulatedSector*, SectorVariation> const& WorldResourceVariation, UFlareSimulatedSector* SectorBRestiction)
+SectorDeal AITradeHelper::FindBestDealForShipFromSector(UFlareSimulatedSpacecraft* Ship, UFlareSimulatedSector* SectorA, SectorDeal* DealToBeat, TMap<UFlareSimulatedSector*, FSectorVariation> const& WorldResourceVariation, UFlareSimulatedSector* SectorBRestiction)
 {
 	SCOPE_CYCLE_COUNTER(STAT_AITradeHelper_FindBestDealForShipFromSector);
 
@@ -330,7 +330,7 @@ SectorDeal AITradeHelper::FindBestDealForShipFromSector(UFlareSimulatedSpacecraf
 }
 
 
-SectorDeal AITradeHelper::FindBestDealForShipToSector(UFlareSimulatedSpacecraft* Ship, UFlareSimulatedSector* SectorA, UFlareSimulatedSector* SectorB, SectorDeal* DealToBeat, TMap<UFlareSimulatedSector*, SectorVariation> const& WorldResourceVariation, UFlareSimulatedSector* SectorBRestiction)
+SectorDeal AITradeHelper::FindBestDealForShipToSector(UFlareSimulatedSpacecraft* Ship, UFlareSimulatedSector* SectorA, UFlareSimulatedSector* SectorB, SectorDeal* DealToBeat, TMap<UFlareSimulatedSector*, FSectorVariation> const& WorldResourceVariation, UFlareSimulatedSector* SectorBRestiction)
 {
 	UFlareCompany* Company = Ship->GetCompany();
 	AFlareGame* Game = Ship->GetGame();
@@ -384,14 +384,14 @@ SectorDeal AITradeHelper::FindBestDealForShipToSector(UFlareSimulatedSpacecraft*
 	}
 #endif
 
-	SectorVariation const* SectorVariationA = &(WorldResourceVariation[SectorA]);
-	SectorVariation const* SectorVariationB = &(WorldResourceVariation[SectorB]);
+	FSectorVariation const* SectorVariationA = &(WorldResourceVariation[SectorA]);
+	FSectorVariation const* SectorVariationB = &(WorldResourceVariation[SectorB]);
 
 	for (int32 ResourceIndex = 0; ResourceIndex < Game->GetResourceCatalog()->Resources.Num(); ResourceIndex++)
 	{
 		FFlareResourceDescription* Resource = &Game->GetResourceCatalog()->Resources[ResourceIndex]->Data;
-		struct ResourceVariation const* VariationA = &SectorVariationA->ResourceVariations[Resource];
-		struct ResourceVariation const* VariationB = &SectorVariationB->ResourceVariations[Resource];
+		struct FResourceVariation const* VariationA = &SectorVariationA->ResourceVariations[Resource->Identifier];
+		struct FResourceVariation const* VariationB = &SectorVariationB->ResourceVariations[Resource->Identifier];
 
 		//FLOGV("- Check for %s", *Resource->Name.ToString());
 
@@ -702,7 +702,7 @@ SectorDeal AITradeHelper::FindBestDealForShipToSector(UFlareSimulatedSpacecraft*
 	return BestDeal;
 }
 
-SectorDeal AITradeHelper::FindBestDealForShip(UFlareSimulatedSpacecraft* Ship, TMap<UFlareSimulatedSector*, SectorVariation>& WorldResourceVariation, UFlareSimulatedSector* SectorARestiction, UFlareSimulatedSector* SectorBRestiction)
+SectorDeal AITradeHelper::FindBestDealForShip(UFlareSimulatedSpacecraft* Ship, TMap<UFlareSimulatedSector*, FSectorVariation>& WorldResourceVariation, UFlareSimulatedSector* SectorARestiction, UFlareSimulatedSector* SectorBRestiction)
 {
 	SCOPE_CYCLE_COUNTER(STAT_AITradeHelper_FindBestDealForShip);
 
@@ -749,14 +749,14 @@ SectorDeal AITradeHelper::FindBestDealForShip(UFlareSimulatedSpacecraft* Ship, T
 				break;
 			}
 
-			SectorVariation* SectorVariationA = &WorldResourceVariation[SectorA];
+			FSectorVariation* SectorVariationA = &WorldResourceVariation[SectorA];
 			if (Ship->GetCurrentSector() != SectorA && SectorVariationA->IncomingCapacity > 0 && SectorBestDeal.BuyQuantity > 0)
 			{
 				//FLOGV("UFlareCompanyAI::UpdateTrading : IncomingCapacity to %s = %d", *SectorA->GetSectorName().ToString(), SectorVariationA->IncomingCapacity);
 				int32 UsedIncomingCapacity = FMath::Min(SectorBestDeal.BuyQuantity, SectorVariationA->IncomingCapacity);
 
 				SectorVariationA->IncomingCapacity -= UsedIncomingCapacity;
-				struct ResourceVariation* VariationA = &SectorVariationA->ResourceVariations[SectorBestDeal.Resource];
+				struct FResourceVariation* VariationA = &SectorVariationA->ResourceVariations[SectorBestDeal.Resource->Identifier];
 				VariationA->OwnedStock -= UsedIncomingCapacity;
 			}
 			else
@@ -774,7 +774,7 @@ SectorDeal AITradeHelper::FindBestDealForShip(UFlareSimulatedSpacecraft* Ship, T
 	return BestDeal;
 }
 
-void AITradeHelper::ApplyDeal(UFlareSimulatedSpacecraft* Ship, SectorDeal const&Deal, TMap<UFlareSimulatedSector*, SectorVariation>* WorldResourceVariation, bool AllowTravel, bool AllowUseNoTradeForMe)
+void AITradeHelper::ApplyDeal(UFlareSimulatedSpacecraft* Ship, SectorDeal const&Deal, TMap<UFlareSimulatedSector*, FSectorVariation>* WorldResourceVariation, bool AllowTravel, bool AllowUseNoTradeForMe)
 {
 	SCOPE_CYCLE_COUNTER(STAT_AITradeHelper_ApplyDeal);
 
@@ -894,24 +894,24 @@ void AITradeHelper::ApplyDeal(UFlareSimulatedSpacecraft* Ship, SectorDeal const&
 				if (BroughtResource > 0)
 				{
 					// Virtualy decrease the stock for other ships in sector A
-					SectorVariation* SectorVariationA = &(*WorldResourceVariation)[Deal.SectorA];
-					struct ResourceVariation* VariationA = &SectorVariationA->ResourceVariations[Deal.Resource];
+					FSectorVariation* SectorVariationA = &(*WorldResourceVariation)[Deal.SectorA];
+					struct FResourceVariation* VariationA = &SectorVariationA->ResourceVariations[Deal.Resource->Identifier];
 					VariationA->OwnedStock -= BroughtResource;
 
 
 					// Virtualy say some capacity arrive in sector B
-					SectorVariation* SectorVariationB = &(*WorldResourceVariation)[Deal.SectorB];
+					FSectorVariation* SectorVariationB = &(*WorldResourceVariation)[Deal.SectorB];
 					SectorVariationB->IncomingCapacity += BroughtResource;
 
 					// Virtualy decrease the capacity for other ships in sector B
-					struct ResourceVariation* VariationB = &SectorVariationB->ResourceVariations[Deal.Resource];
+					struct FResourceVariation* VariationB = &SectorVariationB->ResourceVariations[Deal.Resource->Identifier];
 					VariationB->OwnedCapacity -= BroughtResource;
 				}
 				else if (BroughtResource == 0)
 				{
 					// Failed to buy the promised resources, remove the deal from the list
-					SectorVariation* SectorVariationA = &(*WorldResourceVariation)[Deal.SectorA];
-					struct ResourceVariation* VariationA = &SectorVariationA->ResourceVariations[Deal.Resource];
+					FSectorVariation* SectorVariationA = &(*WorldResourceVariation)[Deal.SectorA];
+					struct FResourceVariation* VariationA = &SectorVariationA->ResourceVariations[Deal.Resource->Identifier];
 					VariationA->FactoryStock = 0;
 					VariationA->OwnedStock = 0;
 					VariationA->StorageStock = 0;
@@ -957,15 +957,15 @@ void AITradeHelper::ApplyDeal(UFlareSimulatedSpacecraft* Ship, SectorDeal const&
 		if(WorldResourceVariation != nullptr)
 		{
 			// Reserve the deal by virtualy decrease the stock for other ships
-			SectorVariation* SectorVariationA = &(*WorldResourceVariation)[Deal.SectorA];
-			struct ResourceVariation* VariationA = &SectorVariationA->ResourceVariations[Deal.Resource];
+			FSectorVariation* SectorVariationA = &(*WorldResourceVariation)[Deal.SectorA];
+			struct FResourceVariation* VariationA = &SectorVariationA->ResourceVariations[Deal.Resource->Identifier];
 			VariationA->OwnedStock -= Deal.BuyQuantity;
 			// Virtualy say some capacity arrive in sector B
-			SectorVariation* SectorVariationB = &(*WorldResourceVariation)[Deal.SectorB];
+			FSectorVariation* SectorVariationB = &(*WorldResourceVariation)[Deal.SectorB];
 			SectorVariationB->IncomingCapacity += Deal.BuyQuantity;
 
 			// Virtualy decrease the capacity for other ships in sector B
-			struct ResourceVariation* VariationB = &SectorVariationB->ResourceVariations[Deal.Resource];
+			struct FResourceVariation* VariationB = &SectorVariationB->ResourceVariations[Deal.Resource->Identifier];
 			VariationB->OwnedCapacity -= Deal.BuyQuantity;
 		}
 	}
@@ -1035,9 +1035,9 @@ void AITradeHelper::ApplyDeal(UFlareSimulatedSpacecraft* Ship, SectorDeal const&
 	}
 }
 
-SectorVariation AITradeHelper::ComputeSectorResourceVariation(UFlareCompany* Company, UFlareSimulatedSector* Sector, bool AllowUseNoTradeForMe, bool FactorIncoming)
+FSectorVariation AITradeHelper::ComputeSectorResourceVariation(UFlareCompany* Company, UFlareSimulatedSector* Sector, bool AllowUseNoTradeForMe, bool FactorIncoming)
 {
-	SectorVariation SectorVariation;
+	FSectorVariation SectorVariation;
 	const TArray<UFlareSimulatedSpacecraft*>& Stations = Sector->GetSectorStations();
 
 	if (Stations.Num() == 0)
@@ -1072,7 +1072,7 @@ SectorVariation AITradeHelper::ComputeSectorResourceVariation(UFlareCompany* Com
 	for (int32 ResourceIndex = 0; ResourceIndex < ResourceCount; ResourceIndex++)
 	{
 		FFlareResourceDescription* Resource = &CatalogResources[ResourceIndex]->Data;
-		struct ResourceVariation ResourceVariation;
+		struct FResourceVariation ResourceVariation;
 		ResourceVariation.OwnedFlow = 0;
 		ResourceVariation.FactoryFlow = 0;
 		ResourceVariation.OwnedStock = 0;
@@ -1088,8 +1088,7 @@ SectorVariation AITradeHelper::ComputeSectorResourceVariation(UFlareCompany* Com
 		ResourceVariation.ConsumerMaxStock = 0;
 		ResourceVariation.MaintenanceMaxStock = 0;
 		ResourceVariation.HighPriority = 0;
-
-		SectorVariation.ResourceVariations.Add(Resource, ResourceVariation);
+		SectorVariation.ResourceVariations.Add(Resource->Identifier, ResourceVariation);
 	}
 
 	for (int32 StationIndex = 0 ; StationIndex < Stations.Num(); StationIndex++)
@@ -1123,7 +1122,7 @@ SectorVariation AITradeHelper::ComputeSectorResourceVariation(UFlareCompany* Com
 		for (int32 ResourceIndex = 0; ResourceIndex < ResourceCount; ResourceIndex++)
 		{
 			FFlareResourceDescription* Resource = &CatalogResources[ResourceIndex]->Data;
-			struct ResourceVariation* Variation = &SectorVariation.ResourceVariations[Resource];
+			struct FResourceVariation* Variation = &SectorVariation.ResourceVariations[Resource->Identifier];
 
 			int32 Stock = 0;
 			int32 Capacity = 0;
@@ -1303,7 +1302,7 @@ SectorVariation AITradeHelper::ComputeSectorResourceVariation(UFlareCompany* Com
 				}
 
 				FFlareResourceDescription* Resource = Factory->GetInputResource(ResourceIndex);
-				struct ResourceVariation* Variation = &SectorVariation.ResourceVariations[Resource];
+				struct FResourceVariation* Variation = &SectorVariation.ResourceVariations[Resource->Identifier];
 
 				if (!Company->IsPlayerCompany())
 				{
@@ -1343,7 +1342,7 @@ SectorVariation AITradeHelper::ComputeSectorResourceVariation(UFlareCompany* Com
 				}
 
 				FFlareResourceDescription* Resource = Factory->GetOutputResource(ResourceIndex);
-				struct ResourceVariation* Variation = &SectorVariation.ResourceVariations[Resource];
+				struct FResourceVariation* Variation = &SectorVariation.ResourceVariations[Resource->Identifier];
 
 				if (Factory->IsProducing())
 				{
@@ -1385,7 +1384,7 @@ SectorVariation AITradeHelper::ComputeSectorResourceVariation(UFlareCompany* Com
 		for (int32 ResourceIndex = 0; ResourceIndex < ResourceCatalog->ConsumerResources.Num(); ResourceIndex++)
 		{
 			FFlareResourceDescription* Resource = &ResourceCatalog->ConsumerResources[ResourceIndex]->Data;
-			struct ResourceVariation* Variation = &SectorVariation.ResourceVariations[Resource];
+			struct FResourceVariation* Variation = &SectorVariation.ResourceVariations[Resource->Identifier];
 
 			int32 Consumption = SectorPeople->GetResourceConsumption(Resource, false);
 
@@ -1438,7 +1437,7 @@ SectorVariation AITradeHelper::ComputeSectorResourceVariation(UFlareCompany* Com
 							continue;
 						}
 
-						struct ResourceVariation* Variation = &SectorVariation.ResourceVariations[Cargo.Resource];
+						struct FResourceVariation* Variation = &SectorVariation.ResourceVariations[Cargo.Resource->Identifier];
 
 						Variation->IncomingResources += Cargo.Quantity / (RemainingTravelDuration * 0.5);
 					}
@@ -1459,7 +1458,7 @@ SectorVariation AITradeHelper::ComputeSectorResourceVariation(UFlareCompany* Com
 	for (int32 ResourceIndex = 0; ResourceIndex < ResourceCatalog->MaintenanceResources.Num(); ResourceIndex++)
 	{
 		FFlareResourceDescription* Resource = &ResourceCatalog->MaintenanceResources[ResourceIndex]->Data;
-		struct ResourceVariation* Variation = &SectorVariation.ResourceVariations[Resource];
+		struct FResourceVariation* Variation = &SectorVariation.ResourceVariations[Resource->Identifier];
 
 		for (int CompanyIndex = 0; CompanyIndex < CompaniesNum; CompanyIndex++)
 		{
@@ -1764,12 +1763,14 @@ void AITradeHelper::GenerateTradingSources(AITradeSources& Sources, AITradeSourc
 						{
 							MaintenanceSource = true;
 						}
+/*
 						else
 						{
 							FLOGV("DEBUG : %d", Station->IsComplex());
 							check(Station->IsComplex() == true);
 							// Trade to not use as source
 						}
+*/
 					}
 
 					int32 Quantity = StationCargoBay->GetResourceQuantity(Resource, nullptr);

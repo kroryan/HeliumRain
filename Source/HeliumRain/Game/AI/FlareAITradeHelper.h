@@ -2,6 +2,7 @@
 
 #include "Object.h"
 #include "../FlareGameTypes.h"
+#include "FlareAITradeHelper.generated.h"
 
 #define DEBUG_NEW_AI_TRADING 0
 
@@ -21,8 +22,11 @@ struct SectorDeal
 };
 
 /* Resource flow */
-struct ResourceVariation
+USTRUCT()
+struct FResourceVariation
 {
+	GENERATED_USTRUCT_BODY()
+
 	int32 OwnedFlow;
 	int32 FactoryFlow;
 
@@ -45,10 +49,14 @@ struct ResourceVariation
 };
 
 /* Local list of resource flows */
-struct SectorVariation
+USTRUCT()
+struct FSectorVariation
 {
+	GENERATED_USTRUCT_BODY()
+
 	int32 IncomingCapacity;
-	TMap<FFlareResourceDescription*, ResourceVariation> ResourceVariations;
+
+	TMap<FName, FResourceVariation> ResourceVariations;
 };
 
 struct AITradeNeed
@@ -166,7 +174,6 @@ struct AITradeSources
 	size_t SourceCount;
 
 
-
 	TMap<FFlareResourceDescription*, AITradeSourcesByResource> SourcesPerResource;
 };
 
@@ -230,23 +237,23 @@ struct AITradeHelper
 {
 	static void CompanyAutoTrade(UFlareCompany* Company);
 
-	static void FleetAutoTrade(UFlareFleet* Fleet, TMap<UFlareSimulatedSector*, SectorVariation>& WorldResourceVariation);
+	static void FleetAutoTrade(UFlareFleet* Fleet, TMap<UFlareSimulatedSector*, FSectorVariation>& WorldResourceVariation);
 
 	static TArray<UFlareSimulatedSpacecraft*> FindIdleCargos(UFlareCompany* Company);
 
-	static SectorDeal FindBestDealForShipFromSector(UFlareSimulatedSpacecraft* Ship, UFlareSimulatedSector* SectorA, SectorDeal* DealToBeat, TMap<UFlareSimulatedSector*, SectorVariation> const& WorldResourceVariation, UFlareSimulatedSector* SectorBRestiction);
+	static SectorDeal FindBestDealForShipFromSector(UFlareSimulatedSpacecraft* Ship, UFlareSimulatedSector* SectorA, SectorDeal* DealToBeat, TMap<UFlareSimulatedSector*, FSectorVariation> const& WorldResourceVariation, UFlareSimulatedSector* SectorBRestiction);
 
-	static SectorDeal FindBestDealForShipToSector(UFlareSimulatedSpacecraft* Ship, UFlareSimulatedSector* SectorA, UFlareSimulatedSector* SectorB, SectorDeal* DealToBeat, TMap<UFlareSimulatedSector*, SectorVariation> const& WorldResourceVariation, UFlareSimulatedSector* SectorBRestiction);
+	static SectorDeal FindBestDealForShipToSector(UFlareSimulatedSpacecraft* Ship, UFlareSimulatedSector* SectorA, UFlareSimulatedSector* SectorB, SectorDeal* DealToBeat, TMap<UFlareSimulatedSector*, FSectorVariation> const& WorldResourceVariation, UFlareSimulatedSector* SectorBRestiction);
 
-	static SectorDeal FindBestDealForShip(UFlareSimulatedSpacecraft* Ship, TMap<UFlareSimulatedSector*, SectorVariation>& WorldResourceVariation, UFlareSimulatedSector* SectorARestiction, UFlareSimulatedSector* SectorBRestiction);
+	static SectorDeal FindBestDealForShip(UFlareSimulatedSpacecraft* Ship, TMap<UFlareSimulatedSector*, FSectorVariation>& WorldResourceVariation, UFlareSimulatedSector* SectorARestiction, UFlareSimulatedSector* SectorBRestiction);
 
 	static UFlareSimulatedSpacecraft* FindBestMasterShip(int32& UsableShipCount,UFlareFleet* Fleet, TArray<UFlareSimulatedSpacecraft*>& ExcludeList);
 
 
-	static void ApplyDeal(UFlareSimulatedSpacecraft* Ship, SectorDeal const&Deal, TMap<UFlareSimulatedSector*, SectorVariation>* WorldResourceVariation, bool AllowTravel, bool AllowUseNoTradeForMe);
+	static void ApplyDeal(UFlareSimulatedSpacecraft* Ship, SectorDeal const&Deal, TMap<UFlareSimulatedSector*, FSectorVariation>* WorldResourceVariation, bool AllowTravel, bool AllowUseNoTradeForMe);
 
 	/** Get the resource flow in this sector */
-	static SectorVariation ComputeSectorResourceVariation(UFlareCompany* Company, UFlareSimulatedSector* Sector, bool AllowUseNoTradeForMe, bool FactorIncoming = true);
+	static FSectorVariation ComputeSectorResourceVariation(UFlareCompany* Company, UFlareSimulatedSector* Sector, bool AllowUseNoTradeForMe, bool FactorIncoming = true);
 
 	static void GenerateTradingNeeds(AITradeNeeds& Needs, AITradeNeeds& MaintenanceNeeds, AITradeNeeds& StorageNeeds, UFlareWorld* World);
 

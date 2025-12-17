@@ -96,6 +96,7 @@ protected:
 	TSharedPtr<SHorizontalBox>       FleetBoxOne;
 	TSharedPtr<SHorizontalBox>       FleetBoxTwo;
 	TSharedPtr<SHorizontalBox>       FleetBoxThree;
+	int32							 AllShipsCount;
 	int32							 NeutralShips;
 	int32							 NeutralStations;
 	int32							 OwnedShips;

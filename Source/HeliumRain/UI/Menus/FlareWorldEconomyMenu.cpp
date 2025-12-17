@@ -1015,8 +1015,6 @@ void SFlareWorldEconomyMenu::OnInputOutput()
 	RefreshStationList();
 }
 
-
-
 void SFlareWorldEconomyMenu::GenerateStationList()
 {
 	ShipsTravelArray.Empty();
@@ -1040,6 +1038,7 @@ void SFlareWorldEconomyMenu::GenerateStationList()
 				StationsArray.Add(StationCandidate);
 			}
 		}
+
 		ShipsArray.Reserve(ShipsArray.Num() + SectorShips.Num());
 		for (int32 SpacecraftIndex = 0; SpacecraftIndex < SectorShips.Num(); SpacecraftIndex++)
 		{
@@ -1049,6 +1048,7 @@ void SFlareWorldEconomyMenu::GenerateStationList()
 				ShipsArray.Add(ShipCanditate);
 			}
 		}
+
 		for (int32 TravelIndex = 0; TravelIndex < TargetSector->GetGame()->GetGameWorld()->GetTravels().Num(); TravelIndex++)
 		{
 			UFlareTravel* Travel = TargetSector->GetGame()->GetGameWorld()->GetTravels()[TravelIndex];

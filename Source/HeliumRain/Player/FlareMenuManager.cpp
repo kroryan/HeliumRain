@@ -1031,8 +1031,8 @@ bool AFlareMenuManager::FastForwardSingle()
 			PC->GetGame()->DeactivateSector();
 			PC->GetGame()->GetGameWorld()->Simulate();
 
-			EFlareMenu::Type CurrentMenu = GetCurrentMenu();
-			if (CurrentMenu != EFlareMenu::MENU_GameOver)
+			EFlareMenu::Type CurrentMenuKey = GetCurrentMenu();
+			if (CurrentMenuKey != EFlareMenu::MENU_GameOver)
 			{
 				FLOG("AFlareMenuManager::FastForwardSingle: gameover screen");
 				PC->GetGame()->ActivateCurrentSector();
@@ -1059,8 +1059,8 @@ bool AFlareMenuManager::FastForwardSingle()
 			UFlareGameTools::GetDisplayDate(GetGame()->GetGameWorld()->GetDate()),
 			FName("new-date-ff"));
 
-		EFlareMenu::Type CurrentMenu = GetCurrentMenu();
-		if (CurrentMenu != EFlareMenu::MENU_GameOver)
+		EFlareMenu::Type CurrentMenuKey = GetCurrentMenu();
+		if (CurrentMenuKey != EFlareMenu::MENU_GameOver)
 		{
 			ExitMenu();
 			MenuIsOpen = false;

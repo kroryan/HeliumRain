@@ -114,6 +114,7 @@ void UFlareCargoBay::Load(UFlareSimulatedSpacecraft* ParentSpacecraft, TArray<FF
 TArray<FFlareCargoSave>* UFlareCargoBay::Save()
 {
 	CargoBayData.Empty();
+	CargoBayData.Reserve(CargoBay.Num());
 	for (int CargoIndex = 0; CargoIndex < CargoBay.Num() ; CargoIndex++)
 	{
 		FFlareCargo& Cargo = CargoBay[CargoIndex];
@@ -483,7 +484,7 @@ int32 UFlareCargoBay::GetResourceQuantity(FFlareResourceDescription* Resource, U
 	}
 }
 
-int32 UFlareCargoBay::GetFreeSpaceForResource(FFlareResourceDescription* Resource, UFlareCompany* Client, bool LockOnly, uint8 Context, bool IgnoresRestrictionNobody) const
+int32 UFlareCargoBay::GetFreeSpaceForResource(FFlareResourceDescription* Resource, UFlareCompany* Client, bool LockOnly, uint8 Context, bool IgnoresRestrictionNobody, bool IgnoreHidden) const
 {
 	int32 Quantity = 0;
 
@@ -501,7 +502,7 @@ int32 UFlareCargoBay::GetFreeSpaceForResource(FFlareResourceDescription* Resourc
 			continue;
 		}
 
-		if (Cargo.Lock == EFlareResourceLock::Hidden || Cargo.Lock == EFlareResourceLock::Overflow)
+		if (!IgnoreHidden && (Cargo.Lock == EFlareResourceLock::Hidden || Cargo.Lock == EFlareResourceLock::Overflow))
 		{
 			continue;
 		}
@@ -659,10 +660,22 @@ void UFlareCargoBay::HideUnlockedSlots()
 			if (Cargo.Resource == NULL)
 			{
 				Cargo.Restriction = EFlareResourceRestriction::Nobody;
+/*
+				if (Parent->IsComplex())
+				{
+					FLOGV("UFlareCargoBay::HideUnlockedSlots: %s Setting null resource to Hidden mode because it was on NoLock", *Parent->GetImmatriculation().ToString());
+				}
+*/
 			}
 			else
 			{
 				Cargo.Restriction = EFlareResourceRestriction::Everybody;
+/*
+				if (Parent->IsComplex())
+				{
+					FLOGV("UFlareCargoBay::HideUnlockedSlots: %s Setting %s to Hidden mode because it was on NoLock", *Parent->GetImmatriculation().ToString(), *Cargo.Resource->Identifier.ToString());
+				}
+*/
 			}
 		}
 	}

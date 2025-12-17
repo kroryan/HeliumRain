@@ -1696,11 +1696,7 @@ void UFlareShipPilot::FindBestHostileTarget(EFlareCombatTactic::Type Tactic)
 	UFlareSpacecraftComponentsCatalog* Catalog = Ship->GetGame()->GetShipPartsCatalog();
 
 	for (int32 ComponentIndex = 0; ComponentIndex < Ship->GetActiveSpacecraftComponents().Num(); ComponentIndex++)
-//	for (int32 ComponentIndex = 0; ComponentIndex < Ship->GetData().Components.Num(); ComponentIndex++)
 	{
-//		FFlareSpacecraftComponentSave* ComponentData = &Ship->GetData().Components[ComponentIndex];
-//		FFlareSpacecraftComponentDescription* ComponentDescription = Catalog->Get(ComponentData->ComponentIdentifier);
-
 		UFlareWeapon* Weapon = Cast<UFlareWeapon>(Ship->GetActiveSpacecraftComponents()[ComponentIndex]);
 		if (Weapon)
 		{

@@ -363,19 +363,31 @@ bool UFlareWorld::CheckIntegrity()
 
 			if(IsValid(ShipSector) && ShipSector->IsValidLowLevel())
 			{
-				if (Ship->GetCurrentFleet() == NULL)
+				if (!ShipSector->GetSectorShips().Contains(Ship))
 				{
-					FLOGV("WARNING : World integrity failure : %s in %s is in no fleet",
+					FLOGV("WARNING : World integrity failure : %s in %s but not in sector ship list",
 						*Ship->GetImmatriculation().ToString(),
 						*ShipSector->GetSectorName().ToString());
 					Integrity = false;
 				}
 
-				if(!ShipSector->GetSectorShips().Contains(Ship))
+				if (Ship->GetCurrentFleet() == NULL)
 				{
-					FLOGV("WARNING : World integrity failure : %s in %s but not in sector ship list",
-						  *Ship->GetImmatriculation().ToString(),
-						  *ShipSector->GetSectorName().ToString());
+					FLOGV("WARNING : World integrity failure : %s in %s is in no fleet",
+						*Ship->GetImmatriculation().ToString(),
+						*ShipSector->GetSectorName().ToString());
+
+					if (Ship->GetDescription()->IsDroneShip)
+					{
+						if (Ship->GetCompany())
+						{
+							FLOGV("WARNING : World integrity failure : %s was errant drone, attempting deletion",
+								*Ship->GetImmatriculation().ToString());
+
+							Ship->TryMigrateDrones();
+						}
+					}
+
 					Integrity = false;
 				}
 			}
@@ -412,7 +424,7 @@ bool UFlareWorld::CheckIntegrity()
 							FLOGV("WARNING : World integrity failure : %s was errant drone, attempting deletion",
 							*Ship->GetImmatriculation().ToString());
 
-							Ship->GetCompany()->DestroySpacecraft(Ship);
+							Ship->TryMigrateDrones();
 						}
 					}
 					Integrity = false;
@@ -457,7 +469,6 @@ bool UFlareWorld::CheckIntegrity()
 					Integrity = false;
 				}
 			}
-
 		}
 
 		// Fleets
@@ -2119,9 +2130,11 @@ void UFlareWorld::AddFactory(UFlareFactory* Factory)
 		if (!Factory->GetParent()->GetDescription()->IsDroneCarrier)
 		{
 			Shipyards.AddUnique(Factory->GetParent());
+/*
 			FLOGV("UFlareWorld::AddFactory : AddShipyard %s as factory for %s",
 			*Factory->GetDescription()->Name.ToString(),
 			*Factory->GetParent()->GetImmatriculation().ToString());
+*/
 		}
 		else
 		{
@@ -2374,13 +2387,7 @@ UFlareSimulatedSpacecraft* UFlareWorld::FindSpacecraft(FName ShipImmatriculation
 {
 	for (UFlareCompany* Company : Companies)
 	{
-		UFlareSimulatedSpacecraft* Spacecraft = Company->FindSpacecraft(ShipImmatriculation);
-		if (Spacecraft)
-		{
-			return Spacecraft;
-		}
-
-		Spacecraft = Company->FindSpacecraft(ShipImmatriculation, true);
+		UFlareSimulatedSpacecraft* Spacecraft = Company->FindSpacecraft(ShipImmatriculation, true, true);
 		if (Spacecraft)
 		{
 			return Spacecraft;

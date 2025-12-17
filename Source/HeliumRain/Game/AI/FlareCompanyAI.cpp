@@ -37,10 +37,11 @@
 //#define DEBUG_AI_WAR_MILITARY_MOVEMENT
 //#define DEBUG_AI_BATTLE_STATES
 //#define DEBUG_AI_BUDGET
-//#define DEBUG_AI_BUDGET_PROCESSSTATION
 //#define DEBUG_AI_SHIP_ORDER
 //#define DEBUG_AI_ACTIVESECTOR
-#define DEBUG_AI_CONSTRUCTIONMEMORY
+
+//#define DEBUG_AI_BUDGET_PROCESSSTATION
+//#define DEBUG_AI_CONSTRUCTIONMEMORY
 //#define DEBUG_AI_CONSTRUCTIONSCOREGENERIC
 //#define DEBUG_AI_CONSTRUCTIONSCORECONSUMER
 
@@ -93,6 +94,7 @@ void UFlareCompanyAI::Load(UFlareCompany* ParentCompany, const FFlareCompanyAISa
 	{
 		WasAtWar = true;
 	}
+	CreateWorldResourceVariations(true);
 }
 
 void UFlareCompanyAI::TrackStationConstructionStatus(UFlareSimulatedSpacecraft* Station)
@@ -146,6 +148,32 @@ void UFlareCompanyAI::CapturedStation(UFlareSimulatedSpacecraft* CapturedStation
 	if (CapturedStation)
 	{
 		TrackStationConstructionStatus(CapturedStation);
+
+		if (Behavior->FinishedResearch)
+		{
+			FFlareSpacecraftDescription* StationDescription = CapturedStation->GetDescription();
+			if (StationDescription)
+			{
+				if (StationDescription->IsResearch())
+				{
+					GetGame()->ScrapStation(CapturedStation);
+				}
+				else if (CapturedStation->IsComplex())
+				{
+					TArray<UFlareSimulatedSpacecraft*> ScrappingStations;
+
+					for (UFlareSimulatedSpacecraft* ComplexChild : CapturedStation->GetComplexChildren())
+					{
+						FFlareSpacecraftDescription* ComplexChildStationDescription = ComplexChild->GetDescription();
+						if (ComplexChildStationDescription && ComplexChildStationDescription->IsResearch())
+						{
+							ScrappingStations.Add(ComplexChild);
+						}
+					}
+					GetGame()->ScrapStations(ScrappingStations);
+				}
+			}
+		}
 	}
 }
 
@@ -724,9 +752,9 @@ bool UFlareCompanyAI::IsAboveMinimumMoney()
 	return false;
 }
 
-void UFlareCompanyAI::CreateWorldResourceVariations()
+void UFlareCompanyAI::CreateWorldResourceVariations(bool ForceCreation)
 {
-	if (DaysUntilNextWorldResourceVariation >= 1)
+	if (!ForceCreation && DaysUntilNextWorldResourceVariation >= 1)
 	{
 		return;
 	}
@@ -738,7 +766,7 @@ void UFlareCompanyAI::CreateWorldResourceVariations()
 	for (int32 SectorIndex = 0; SectorIndex < Company->GetKnownSectors().Num(); SectorIndex++)
 	{
 		UFlareSimulatedSector* Sector = Company->GetKnownSectors()[SectorIndex];
-		SectorVariation Variation = AITradeHelper::ComputeSectorResourceVariation(Company, Sector, true);
+		FSectorVariation Variation = AITradeHelper::ComputeSectorResourceVariation(Company, Sector, true);
 		WorldResourceVariation.Add(Sector, Variation);
 	}
 }
@@ -758,7 +786,7 @@ void UFlareCompanyAI::Simulate(bool GlobalWar, int32 TotalReservedResources)
 		CheckBattleResolution();
 		UpdateDiplomacy(GlobalWar);
 
-		WorldStats = Game->GetGameWorld()->GetWorldStats(); //			WorldHelper::ComputeWorldResourceStats(Game, true);
+		WorldStats = Game->GetGameWorld()->GetWorldStats();
 		Shipyards = Game->GetGameWorld()->GetShipyardsFor(Company);
 		UndiscoveredSectors = Company->GetUndiscoveredSectors();
 		CanUpgradeSectors.Empty();
@@ -897,7 +925,7 @@ void UFlareCompanyAI::AutoScrap()
 		int32 ExtraCargo = SCargoShipCount - Behavior->Scrap_Min_S_Cargo;
 		int32 ExtraMilitary = SMilitaryShipCount - Behavior->Scrap_Min_S_Military;
 
-		if(TotalShipCount < Behavior->Scrap_Minimum_Ships || (ExtraCargo < 0 && ExtraMilitary < 0))
+		if(TotalShipCount < Behavior->Scrap_Minimum_Ships || (ExtraCargo <= 0 && ExtraMilitary <= 0))
 		{
 			return;
 		}
@@ -925,7 +953,6 @@ void UFlareCompanyAI::AutoScrap()
 		int32 BestScrapCandidateResourceCount = 0;
 		int32 BestScrapCandidateCapacity = 0;
 		int32 BestScrapCandidateWeaponGroups = 0;
-
 
 		for (UFlareSimulatedSpacecraft* ShipCandidate : Company->GetCompanyShips())
 		{
@@ -1067,7 +1094,7 @@ bool UFlareCompanyAI::PurchaseSectorStationLicense(EFlareBudget::Type BudgetType
 			int32 PickIndex = FMath::RandRange(0, PrioritySectorCandidates.Num() - 1);
 			AIData.DesiredStationLicense = PrioritySectorCandidates[PickIndex]->GetDescription()->Identifier;
 		}
-		else
+		else if (SectorCandidates.Num() > 0)
 		{
 			int32 PickIndex = FMath::RandRange(0, SectorCandidates.Num() - 1);
 			AIData.DesiredStationLicense = SectorCandidates[PickIndex]->GetDescription()->Identifier;
@@ -1173,8 +1200,12 @@ void UFlareCompanyAI::PurchaseResearch()
 
 			if (Researchtogo <= 0)
 			{
+				FLOGV("UFlareCompanyAI::PurchaseResearch %s has finished all research", *Company->GetCompanyName().ToString());
+
 				Behavior->FinishedResearch = true;
 				RedistributeBudget(EFlareBudget::Technology, GetBudget(EFlareBudget::Technology));
+
+				TArray<UFlareSimulatedSpacecraft*> ScrappingStations;
 				for (int StationIndex = 0; StationIndex < Company->GetCompanyStations().Num(); StationIndex++)
 				{
 					UFlareSimulatedSpacecraft* Station = Company->GetCompanyStations()[StationIndex];
@@ -1183,12 +1214,27 @@ void UFlareCompanyAI::PurchaseResearch()
 						FFlareSpacecraftDescription* StationDescription = Station->GetDescription();
 						if (StationDescription && StationDescription->IsResearch())
 						{
-							GetGame()->ScrapStation(Station);
-							--StationIndex;
-							continue;
+							ScrappingStations.Add(Station);
 						}
 					}
 				}
+
+				TArray<UFlareSimulatedSpacecraft*>& CompanyStationComplexes = Company->GetCompanyStationComplexes();
+				for (int StationIndex = 0; StationIndex < CompanyStationComplexes.Num(); StationIndex++)
+				{
+					UFlareSimulatedSpacecraft* Station = CompanyStationComplexes[StationIndex];
+					for (UFlareSimulatedSpacecraft* ComplexChild : Station->GetComplexChildren())
+					{
+						FFlareSpacecraftDescription* ComplexChildDescription = ComplexChild->GetDescription();
+						if (ComplexChildDescription && ComplexChildDescription->IsResearch())
+						{
+							ScrappingStations.Add(ComplexChild);
+						}
+					}
+				}
+
+				GetGame()->ScrapStations(ScrappingStations);
+
 				// No further technologies to unlock
 				return;
 			}
@@ -1724,6 +1770,7 @@ void UFlareCompanyAI::ProcessBudgetStation(int64 BudgetAmount, bool Technology, 
 	TArray<FName> Keys;
 	LicensedSectors.GetKeys(Keys);
 	bool FoundPossibleSector = false;
+
 	KnownSectors.Reserve(Keys.Num());
 	for (int i = 0; i < Keys.Num(); i++)
 	{
@@ -1739,9 +1786,10 @@ void UFlareCompanyAI::ProcessBudgetStation(int64 BudgetAmount, bool Technology, 
 				int32 OwnedStationCount = Company->GetCompanySectorStationsCount(Sector);
 				int32 MaxStationCount = Company->GetCompanyMaxStationsForSector(Sector);
 
-				if (OwnedStationCount < MaxStationCount)
+				if (OwnedStationCount < MaxStationCount && Sector->GetSectorStations().Num() < AI_MAX_STATION_PER_SECTOR)
 				{
 					FoundPossibleSector = true;
+//					FLOGV("UFlareCompanyAI::ProcessBudgetStation %s knows %s is available for building", *Company->GetCompanyName().ToString(), *Sector->GetSectorName().ToString());
 				}
 			}
 		}
@@ -1749,7 +1797,6 @@ void UFlareCompanyAI::ProcessBudgetStation(int64 BudgetAmount, bool Technology, 
 
 	//Check if a construction is in progress
 	bool UnderConstruction = false;
-	bool UnderConstructionUpgrade = false;
 
 	if (!FoundPossibleSector)
 	{
@@ -1779,6 +1826,7 @@ void UFlareCompanyAI::ProcessBudgetStation(int64 BudgetAmount, bool Technology, 
 
 	ReservedResources = 0;
 	bool Resources_Upgrade = true;
+	bool UnderConstructionUpgrade = false;
 
 	if (UnderConstructionStations.Num() >= UnderConstructionLimit)
 	{
@@ -1826,9 +1874,13 @@ void UFlareCompanyAI::ProcessBudgetStation(int64 BudgetAmount, bool Technology, 
 		if (PreviousWorkingMemory->BestStation)
 		{
 			// Was a best station but company check encase it got captured
-			if (PreviousWorkingMemory->BestStation->GetCompany() == Company)
+			if (!PreviousWorkingMemory->BestStation->IsDestroyed() && PreviousWorkingMemory->BestStation->GetCompany() == Company)
 			{
 				BestStation = PreviousWorkingMemory->BestStation;
+			}
+			else
+			{
+				PreviousWorkingMemory->BestStation = nullptr;
 			}
 		}
 
@@ -1873,7 +1925,7 @@ void UFlareCompanyAI::ProcessBudgetStation(int64 BudgetAmount, bool Technology, 
 			TArray<UFlareSimulatedSpacecraft*> CompanySectorStations = Company->GetCompanySectorStations(Sector);
 			TArray<UFlareSimulatedSpacecraft*> SectorStations = Sector->GetSectorStations();
 
-			//		FLOGV("UFlareCompanyAI::ProcessBudgetStation looking at %s for station building",  *Sector->GetSectorName().ToString());
+//		FLOGV("UFlareCompanyAI::ProcessBudgetStation looking at %s for station building",  *Sector->GetSectorName().ToString());
 
 			if (CompanyStationComplexes.Num() > 0)
 			{
@@ -1913,6 +1965,7 @@ void UFlareCompanyAI::ProcessBudgetStation(int64 BudgetAmount, bool Technology, 
 
 			if (!UnderConstruction)
 			{
+
 				// Loop on catalog
 				for (int32 StationIndex = 0; StationIndex < StationCatalog.Num(); StationIndex++)
 				{
@@ -1937,6 +1990,7 @@ void UFlareCompanyAI::ProcessBudgetStation(int64 BudgetAmount, bool Technology, 
 						// Check sector limitations
 						if (!Sector->CanBuildStation(StationDescription, Company, true))
 						{
+//							FLOGV("UFlareCompanyAI::ProcessBudgetStation restricted from building %s", *Sector->GetSectorName().ToString());
 							continue;
 						}
 					}
@@ -1986,6 +2040,7 @@ void UFlareCompanyAI::ProcessBudgetStation(int64 BudgetAmount, bool Technology, 
 
 					if (UpdatableStationCountForThisKind >= MaximumUpdatable || StationCountForThisKind >= Maximum)
 					{
+//						FLOG("UFlareCompanyAI::ProcessBudgetStation Prefer update instead of build new");
 						// Prefer update if possible
 						continue;
 					}
@@ -2005,7 +2060,7 @@ void UFlareCompanyAI::ProcessBudgetStation(int64 BudgetAmount, bool Technology, 
 							StationCount++;
 						}
 
-						if (StorageStationCount < 1 && StationCount > AI_MAX_STATION_PER_SECTOR / 2)
+						if (StorageStationCount < 1 && StationCount >= AI_MAX_STATION_PER_SECTOR / 2)
 						{
 							UpdateBestScore(1e18f, Sector, StationDescription, NULL, &BestScore, &BestStationDescription, &BestStation, &BestSector);
 							break;
@@ -2399,7 +2454,7 @@ int64 UFlareCompanyAI::UpdateCargoShipAcquisition()
 	const FFlareSpacecraftDescription* ShipDescription = FindBestShipToBuild(false);
 	if (ShipDescription == NULL)
 	{
-		//FLOG("Find no ship to build");
+		FLOGV("UFlareCompanyAI::UpdateCargoShipAcquisition %s Find no ship to build", *Company->GetCompanyName().ToString());
 		return 0;
 	}
 
@@ -2434,6 +2489,13 @@ int64 UFlareCompanyAI::UpdateWarShipAcquisition()
 	}
 
 	const FFlareSpacecraftDescription* ShipDescription = FindBestShipToBuild(true);
+
+#if !UE_BUILD_SHIPPING
+	if (ShipDescription == NULL)
+	{
+		FLOGV("UFlareCompanyAI::UpdateWarShipAcquisition %s Find no ship to build", *Company->GetCompanyName().ToString());
+	}
+#endif
 	return OrderOneShip(ShipDescription);
 }
 
@@ -2824,9 +2886,9 @@ TArray<WarTarget> UFlareCompanyAI::GenerateWarTargetList(AIWarContext& WarContex
 					TArray<UFlareCompany*> InvolvedCompanies;
 					MovableFleets.GenerateKeyArray(InvolvedCompanies);
 					TArray<UFlareFleet*> UsableFleets;
-					for (UFlareCompany* InvolvedCompanies : InvolvedCompanies)
+					for (UFlareCompany* InvolvedCompany : InvolvedCompanies)
 					{
-						UsableFleets.Append(MovableFleets[InvolvedCompanies]);
+						UsableFleets.Append(MovableFleets[InvolvedCompany]);
 					}
 
 					for (UFlareFleet* AssignedFleet : UsableFleets)
@@ -3392,9 +3454,9 @@ void UFlareCompanyAI::UpdateWarMilitaryMovement()
 				TArray<UFlareCompany*> InvolvedCompanies;
 				MovableFleets.GenerateKeyArray(InvolvedCompanies);
 				TArray<UFlareFleet*> UsableFleets;
-				for (UFlareCompany* InvolvedCompanies : InvolvedCompanies)
+				for (UFlareCompany* InvolvedCompany : InvolvedCompanies)
 				{
-					UsableFleets.Append(MovableFleets[InvolvedCompanies]);
+					UsableFleets.Append(MovableFleets[InvolvedCompany]);
 				}
 
 				UsableFleets.Sort(FSortBySlowestFleet(Sector.Sector,Target.Sector));
@@ -3460,7 +3522,7 @@ void UFlareCompanyAI::UpdateWarMilitaryMovement()
 					if (SelectedFleet->GetFleetCompany() != Company)
 					{
 						//allied fleet, extra checks before grabbing
-						bool CapturingStation = Sector.CapturingStations[WarContext.Allies.Find(SelectedFleet->GetFleetCompany())];
+						CapturingStation = Sector.CapturingStations[WarContext.Allies.Find(SelectedFleet->GetFleetCompany())];
 
 						if (CapturingStation)
 						{
@@ -3471,7 +3533,7 @@ void UFlareCompanyAI::UpdateWarMilitaryMovement()
 							continue;
 						}
 
-						bool CapturingShip = Sector.CapturingShips[WarContext.Allies.Find(SelectedFleet->GetFleetCompany())];
+						CapturingShip = Sector.CapturingShips[WarContext.Allies.Find(SelectedFleet->GetFleetCompany())];
 						if (CapturingShip)
 						{
 #ifdef DEBUG_AI_WAR_MILITARY_MOVEMENT
@@ -3735,9 +3797,9 @@ void UFlareCompanyAI::UpdateWarMilitaryMovement()
 		MovableFleets.GenerateKeyArray(InvolvedCompanies);
 
 		TArray<UFlareFleet*> UsableFleets;
-		for (UFlareCompany* InvolvedCompanies : InvolvedCompanies)
+		for (UFlareCompany* InvolvedCompany : InvolvedCompanies)
 		{
-			UsableFleets.Append(MovableFleets[InvolvedCompanies]);
+			UsableFleets.Append(MovableFleets[InvolvedCompany]);
 		}
 
 		for (UFlareFleet* SelectedFleet : UsableFleets)
@@ -4760,13 +4822,12 @@ int64 UFlareCompanyAI::OrderOneShip(const FFlareSpacecraftDescription* ShipDescr
 
 const FFlareSpacecraftDescription* UFlareCompanyAI::FindBestShipToBuild(bool Military)
 {
-	int32 TotalCompanyShipCount = Company->GetCompanyShips().Num();
-	if(TotalCompanyShipCount > AI_MAX_SHIP_COUNT)
+	CompanyValue TotalValue = Company->GetCompanyValue();
+	if(TotalValue.TotalShipCount > AI_MAX_SHIP_COUNT)
 	{
 		return nullptr;
 	}
 
-	//DEBUG
 	int32 ShipSCount = 0;
 	int32 ShipLCount = 0;
 
@@ -4782,6 +4843,11 @@ const FFlareSpacecraftDescription* UFlareCompanyAI::FindBestShipToBuild(bool Mil
 			continue;
 		}
 
+		if (Ship->GetDescription()->IsDroneShip)
+		{
+			continue;
+		}
+			
 		if (Ship->GetSize() ==EFlarePartSize::S)
 		{
 			ShipSCount++;
@@ -4864,7 +4930,7 @@ const FFlareSpacecraftDescription* UFlareCompanyAI::FindBestShipToBuild(bool Mil
 	int32 LSwitchThreshold = (Military ? Behavior->BuildLMilitaryOnlyTreshhold : Behavior->BuildLTradeOnlyTreshhold);
 	bool PickLShip = true;
 
-	if (TotalCompanyShipCount < LSwitchThreshold && SizeDiversityBase + (ShipLCount * SizeDiversity) > ShipSCount)
+	if (TotalValue.TotalShipCount < LSwitchThreshold && SizeDiversityBase + (ShipLCount * SizeDiversity) > ShipSCount)
 	{
 		PickLShip = false;
 		EfficiencyChance = (Military ? Behavior->BuildEfficientMilitaryChanceSmall : Behavior->BuildEfficientTradeChanceSmall);
@@ -4891,6 +4957,7 @@ const FFlareSpacecraftDescription* UFlareCompanyAI::FindBestShipToBuild(bool Mil
 		{
 			continue;
 		}
+
 		if (Description->BuyableCompany.Num() > 0)
 		{
 			//buyable company has something, check if we're allowed to buy this in the first place
@@ -5459,16 +5526,23 @@ float UFlareCompanyAI::ComputeConstructionScoreForStation(UFlareSimulatedSector*
 
 	if (StationDescription->Capabilities.Contains(EFlareSpacecraftCapability::Consumer))
 	{
-		Score *= Behavior->ConsumerAffility;
+		const FSectorVariation* ThisSectorVariation = WorldResourceVariation.Find(Sector);
+		if (!ThisSectorVariation)
+		{
+			return 0.f;
+		}
 
-		const SectorVariation* ThisSectorVariation = &WorldResourceVariation[Sector];
+		Score *= Behavior->ConsumerAffility;
 		float MaxScoreModifier = 0;
 		UFlarePeople* SectorPeople = Sector->GetPeople();
-
 		for (int32 ResourceIndex = 0; ResourceIndex < Game->GetResourceCatalog()->ConsumerResources.Num(); ResourceIndex++)
 		{
 			FFlareResourceDescription* Resource = &Game->GetResourceCatalog()->ConsumerResources[ResourceIndex]->Data;
-			const struct ResourceVariation* Variation = &ThisSectorVariation->ResourceVariations[Resource];
+			const FResourceVariation* Variation = ThisSectorVariation->ResourceVariations.Find(Resource->Identifier);
+			if (!Variation)
+			{
+				continue;
+			}
 
 			float Consumption = SectorPeople->GetResourceConsumption(Resource, false);
 	
@@ -5508,17 +5582,22 @@ float UFlareCompanyAI::ComputeConstructionScoreForStation(UFlareSimulatedSector*
 	}
 	else if (StationDescription->Capabilities.Contains(EFlareSpacecraftCapability::Maintenance))
 	{
+		const FSectorVariation* ThisSectorVariation = WorldResourceVariation.Find(Sector);
+		if (!ThisSectorVariation)
+		{
+			return 0.f;
+		}
+
 		Score *= Behavior->MaintenanceAffility;
-
-		const SectorVariation* ThisSectorVariation = &WorldResourceVariation[Sector];
-
 		float MaxScoreModifier = 0;
-
 		for (int32 ResourceIndex = 0; ResourceIndex < Game->GetResourceCatalog()->MaintenanceResources.Num(); ResourceIndex++)
 		{
 			FFlareResourceDescription* Resource = &Game->GetResourceCatalog()->MaintenanceResources[ResourceIndex]->Data;
-			const struct ResourceVariation* Variation = &ThisSectorVariation->ResourceVariations[Resource];
-
+			const FResourceVariation* Variation = ThisSectorVariation->ResourceVariations.Find(Resource->Identifier);
+			if (!Variation)
+			{
+				continue;
+			}
 
 			int32 Consumption = WorldStats[Resource].Consumption / Company->GetKnownSectors().Num();
 			//FLOGV("%s comsumption = %d", *Resource->Name.ToString(), Consumption);
@@ -5774,6 +5853,7 @@ float UFlareCompanyAI::ComputeConstructionScoreForStation(UFlareSimulatedSector*
 					if (WorldStats[&Resource->Resource->Data].Stock > 0)
 					{
 						float StockCapacityRatio = WorldStats[&Resource->Resource->Data].Capacity / WorldStats[&Resource->Resource->Data].Stock;
+						StockCapacityRatio = FMath::Clamp(StockCapacityRatio, 0.01f, 10.f);
 						Score *= StockCapacityRatio;
 						//					FLOGV("    StockCapacityRatio %f", StockCapacityRatio);
 						//					FLOGV("    StockCapacityMalus %f", StockCapacityMalus);
@@ -5789,7 +5869,7 @@ float UFlareCompanyAI::ComputeConstructionScoreForStation(UFlareSimulatedSector*
 					if (OverflowRatio > 0)
 					{
 						float UnderflowRatio = WorldStats[&Resource->Resource->Data].Balance / MaxVolume;
-						float OverflowMalus = FMath::Clamp(1.f - ((OverflowRatio - 0.1f) * 100) / ResourceAffility, 0.f, 1.f);
+						float OverflowMalus = FMath::Clamp(1.f - ((OverflowRatio - 0.1f) * 100) / ResourceAffility, 0.01f, 1.f);
 						Score *= OverflowMalus;
 						//					FLOGV("    MaxVolume %f", MaxVolume);
 						//					FLOGV("    OverflowRatio %f", OverflowRatio);
@@ -5885,13 +5965,13 @@ float UFlareCompanyAI::ComputeStationPrice(UFlareSimulatedSector* Sector, FFlare
 
 
 
-void UFlareCompanyAI::DumpSectorResourceVariation(UFlareSimulatedSector* Sector, TMap<FFlareResourceDescription*, struct ResourceVariation>* SectorVariation) const
+void UFlareCompanyAI::DumpSectorResourceVariation(UFlareSimulatedSector* Sector, TMap<FName, struct FResourceVariation>* SectorVariation) const
 {
 	FLOGV("DumpSectorResourceVariation : sector %s resource variation: ", *Sector->GetSectorName().ToString());
 	for (int32 ResourceIndex = 0; ResourceIndex < Game->GetResourceCatalog()->Resources.Num(); ResourceIndex++)
 	{
 		FFlareResourceDescription* Resource = &Game->GetResourceCatalog()->Resources[ResourceIndex]->Data;
-		struct ResourceVariation* Variation = &(*SectorVariation)[Resource];
+		struct FResourceVariation* Variation = &(*SectorVariation)[Resource->Identifier];
 		if (Variation->OwnedFlow ||
 				Variation->FactoryFlow ||
 				Variation->OwnedStock ||

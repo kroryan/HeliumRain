@@ -724,7 +724,16 @@ void AFlareGame::Scrap(FName ShipImmatriculation, FName TargetStationImmatricula
 	}
 }
 
-void AFlareGame::ScrapStation(UFlareSimulatedSpacecraft* StationToScrap)
+
+void AFlareGame::ScrapStations(TArray<UFlareSimulatedSpacecraft*> StationsToScrap)
+{
+	for (int StationIndex = 0; StationIndex < StationsToScrap.Num(); StationIndex++)
+	{
+		ScrapStation(StationsToScrap[StationIndex], StationIndex != StationsToScrap.Num() -1);
+	}
+}
+
+void AFlareGame::ScrapStation(UFlareSimulatedSpacecraft* StationToScrap,bool ReactivateSectorAfter)
 {
 	if(!StationToScrap)
 	{
@@ -762,7 +771,6 @@ void AFlareGame::ScrapStation(UFlareSimulatedSpacecraft* StationToScrap)
 			EFlareNotification::NT_Economy);
 	}
 
-
 	if(StationToScrap->IsComplexElement())
 	{
 		StationToScrap->GetComplexMaster()->UnregisterComplexElement(StationToScrap);
@@ -771,7 +779,7 @@ void AFlareGame::ScrapStation(UFlareSimulatedSpacecraft* StationToScrap)
 
 	StationToScrap->GetCompany()->DestroySpacecraft(StationToScrap);
 
-	if (IsActiveSector)
+	if (ReactivateSectorAfter && IsActiveSector)
 	{
 		ActivateCurrentSector();
 	}
@@ -1722,6 +1730,7 @@ FText AFlareGame::PickSpacecraftName(UFlareCompany* OwnerCompany, bool IsStation
 		{
 			// List stations
 			TArray<UFlareSimulatedSpacecraft*> CandidateShips;
+			CandidateShips.Reserve(GetGameWorld()->GetCompanies()[i]->GetCompanyStations().Num() + GetGameWorld()->GetCompanies()[i]->GetCompanyStations().Num() + GetGameWorld()->GetCompanies()[i]->GetCompanyShips().Num());
 			for (auto& Candidate : GetGameWorld()->GetCompanies()[i]->GetCompanyStations())
 			{
 				CandidateShips.Add(Candidate);
@@ -1739,8 +1748,8 @@ FText AFlareGame::PickSpacecraftName(UFlareCompany* OwnerCompany, bool IsStation
 			for (auto& OtherSpacecraft : CandidateShips)
 			{
 				// Break up other name to transform "<name>-<type><number>" into "<name>-number>"
-				TArray<FString> NickNameParts;
-				OtherSpacecraft->GetNickName().ToString().ParseIntoArray(NickNameParts, TEXT("-"));
+				const TArray<FString>& NickNameParts = OtherSpacecraft->GetNickNamePartsCache();
+
 				FString OtherName;
 
 				if (NickNameParts.Num())

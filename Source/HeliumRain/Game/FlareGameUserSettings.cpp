@@ -43,7 +43,6 @@ void UFlareGameUserSettings::SetToDefaults()
 	MaxShipsInSector = 60;
 
 	// Input
-
 	GamepadProfileLayout = EFlareGamepadLayout::GL_Default;
 	GamepadInvertYaw = false;
 	GamepadInvertPitch = false;
@@ -60,6 +59,11 @@ void UFlareGameUserSettings::SetToDefaults()
 	// Sound
 	MusicVolume = 10;
 	MasterVolume = 10;
+
+	// Logs
+	CombatLogs = false;
+	GameLogs = false;
+	GameLogsBindableKeys = false;
 }
 
 void UFlareGameUserSettings::EnsureConsistency()

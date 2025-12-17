@@ -377,6 +377,7 @@ void SFlareSectorMenu::Construct(const FArguments& InArgs)
 				SAssignNew(OwnedReserveShipList, SFlareList)
 				.MenuManager(MenuManager)
 				.Title(LOCTEXT("OwnedSpacecraftsReserve", "Owned spacecraft in reserve"))
+				.OnListFilterClicked(this, &SFlareSectorMenu::OnOwnedSpacecraftReserveFilterSelected)
 				.Visibility(this, &SFlareSectorMenu::GetOwnedReserveVisibility)
 			]
 		]
@@ -405,6 +406,7 @@ void SFlareSectorMenu::Construct(const FArguments& InArgs)
 				.MenuManager(MenuManager)
 				.Title(LOCTEXT("OtherSpacecraftsReserve", "Other spacecraft in reserve"))
 				.Visibility(this, &SFlareSectorMenu::GetOtherReserveVisibility)
+				.OnListFilterClicked(this, &SFlareSectorMenu::OnOtherSpacecraftReserveFilterSelected)
 			]
 		]
 	];
@@ -603,7 +605,10 @@ void SFlareSectorMenu::UpdateShipLists()//(UFlareFleet* TargetOwnedFleet, UFlare
 	OtherReserveShipList->RefreshList();
 
 	OnOwnedSpacecraftFilterSelected();
+	OnOwnedSpacecraftReserveFilterSelected();
+
 	OnOtherSpacecraftFilterSelected();
+	OnOtherSpacecraftReserveFilterSelected();
 }
 
 void SFlareSectorMenu::Exit()
@@ -626,12 +631,28 @@ void SFlareSectorMenu::OnOwnedSpacecraftFilterSelected()
 	FText::FromString(FormattedNumber)));
 }
 
+void SFlareSectorMenu::OnOwnedSpacecraftReserveFilterSelected()
+{
+	FString FormattedNumber = FString::FormatAsNumber(OwnedReserveShipList->GetFilteredItemCount());
+
+	OwnedReserveShipList->SetTitle(FText::Format(LOCTEXT("OwnedReserveSpacecraftsSectorFormat", "Owned spacecraft in reserve ({0})"),
+		FText::FromString(FormattedNumber)));
+}
+
 void SFlareSectorMenu::OnOtherSpacecraftFilterSelected()
 {
 	FString FormattedNumber = FString::FormatAsNumber(OtherShipList->GetFilteredItemCount());
 
 	OtherShipList->SetTitle(FText::Format(LOCTEXT("OtherSpacecraftsSectorFormat", "Other spacecraft ({0})"),
 	FText::FromString(FormattedNumber)));
+}
+
+void SFlareSectorMenu::OnOtherSpacecraftReserveFilterSelected()
+{
+	FString FormattedNumber = FString::FormatAsNumber(OtherReserveShipList->GetFilteredItemCount());
+
+	OtherReserveShipList->SetTitle(FText::Format(LOCTEXT("OtherSpacecraftsReserveSectorFormat", "Other spacecraft in reserve ({0})"),
+		FText::FromString(FormattedNumber)));
 }
 
 void SFlareSectorMenu::OnOwnedActiveSpacecraftSelectedLeft(TSharedPtr<FInterfaceContainer> SpacecraftContainer)

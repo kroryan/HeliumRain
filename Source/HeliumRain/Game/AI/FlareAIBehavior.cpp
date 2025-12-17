@@ -422,9 +422,9 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 	MaintenanceAffility = 0.1f;
 
 	// Budget
-	BudgetTechnologyWeight = 0.05f;
+	BudgetTechnologyWeight = 0.075f;
 	BudgetMilitaryWeight = 0.30f;
-	BudgetStationWeight = 0.34f;
+	BudgetStationWeight = 0.315f;
 	BudgetTradeWeight = 0.31f;
 
 	BudgetWarTechnologyWeight = 0.00f;
@@ -441,9 +441,10 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 	WarDeclared_TransferToMilitaryBudgetTechnologyPercent = 0.04f;
 	WarDeclared_TransferToMilitaryBudgetTradePercent = 0.05f;
 
-	MaxTradeShipsBuildingPeace = 1;
-	MaxTradeShipsBuildingWar = 0;
-	MaxMilitaryShipsBuildingPeace = 1;
+	MaxTradeShipsBuildingPeace = 2;
+	MaxTradeShipsBuildingWar = 1;
+
+	MaxMilitaryShipsBuildingPeace = 2;
 	MaxMilitaryShipsBuildingWar = 100;
 
 	ConfidenceTarget = -0.1f;
@@ -531,7 +532,6 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 			SetSectorAffility(ST->Boneyard, 10.f);
 			SetSectorAffility(ST->Decay, 0.5f);
 			SetSectorAffility(ST->Daedalus, 0.5f);
-
 		}
 
 		ComplexAffility = 0.f;
@@ -555,12 +555,12 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 		DefeatAdaptation = 0.001f;
 
 		// Budget
-		MaxMilitaryShipsBuildingPeace = 3;
+		MaxMilitaryShipsBuildingPeace *= 3;
 
-		BudgetTechnologyWeight = 0.f;
+		BudgetTechnologyWeight = 0.001f;
 		BudgetMilitaryWeight = 0.90f;
 		BudgetStationWeight = 0.075f;
-		BudgetTradeWeight = 0.025f;
+		BudgetTradeWeight = 0.024f;
 
 		BudgetWarTechnologyWeight = 0.f;
 		BudgetWarMilitaryWeight = 0.95f;
@@ -612,8 +612,6 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 		}
 
 		// Budget
-		MaxTradeShipsBuildingWar = 1;
-		MaxMilitaryShipsBuildingPeace = 2;
 
 		BuildMilitaryDiversity = 2;
 		BuildTradeDiversity = 2;
@@ -642,10 +640,10 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 		}
 
 		// Budget
-		BudgetTechnologyWeight = 0.02f;
+		BudgetTechnologyWeight = 0.025f;
 		BudgetMilitaryWeight = 0.10f;
 		BudgetStationWeight = 0.50f;
-		BudgetTradeWeight = 0.38f;
+		BudgetTradeWeight = 0.375f;
 
 		BudgetWarTechnologyWeight = 0.f;
 		BudgetWarMilitaryWeight = 0.50f;
@@ -714,20 +712,20 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 		CostSafetyMarginMilitaryShip = 1.2f;
 		CostSafetyMarginTradeShip = 1.0f;
 
-		BudgetTechnologyWeight = 0.01f;
+		BudgetTechnologyWeight = 0.06f;
 		BudgetMilitaryWeight = 0.10f;
-		BudgetStationWeight = 0.30f;
-		BudgetTradeWeight = 0.59f;
+		BudgetStationWeight = 0.26f;
+		BudgetTradeWeight = 0.58f;
 
-		BudgetWarTechnologyWeight = 0.f;
-		BudgetWarMilitaryWeight = 0.50f;
-		BudgetWarStationWeight = 0.15f;
-		BudgetWarTradeWeight = 0.35f;
+		BudgetWarTechnologyWeight = 0.01f;
+		BudgetWarMilitaryWeight = 0.97f;
+		BudgetWarStationWeight = 0.01f;
+		BudgetWarTradeWeight = 0.01f;
 
 		WarDeclared_TransferToMilitaryBudgetTechnologyPercent = 0.01f;
 
-		MaxTradeShipsBuildingPeace = 2;
-		MaxTradeShipsBuildingWar = 1;
+		MaxTradeShipsBuildingPeace *= 2;
+		MaxTradeShipsBuildingWar *= 2;
 
 		DeclareWarConfidence = 0.1f;
 		RequestPeaceConfidence = -0.4f;
@@ -793,7 +791,7 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 		BuildTradeDiversity = 2;
 
 		MaxTradeShipsBuildingWar = 1;
-		MaxMilitaryShipsBuildingPeace = 2;
+		MaxMilitaryShipsBuildingPeace *= 2;
 
 		BuildEfficientTradeChance = 0.15f;
 
@@ -875,7 +873,7 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 
 		WarDeclared_TransferToMilitaryBudgetFactor = 0.75f;
 
-		MaxMilitaryShipsBuildingPeace = 2;
+		MaxMilitaryShipsBuildingPeace *= 2;
 
 		BuildMilitaryDiversity = 2;
 		BuildMilitaryDiversitySize = 4;
@@ -908,14 +906,14 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 		ComplexAffility = 1.25f;
 
 		BudgetTechnologyWeight = 0.25f;
-		BudgetMilitaryWeight = 0.10f;
+		BudgetMilitaryWeight = 0.11f;
 		BudgetStationWeight = 0.35f;
-		BudgetTradeWeight = 0.30f;
+		BudgetTradeWeight = 0.29f;
 
-		BudgetWarTechnologyWeight = 0.05f;
-		BudgetWarMilitaryWeight = 0.50f;
-		BudgetWarStationWeight = 0.15f;
-		BudgetWarTradeWeight = 0.30f;
+		BudgetWarTechnologyWeight = 0.10f;
+		BudgetWarMilitaryWeight = 0.70f;
+		BudgetWarStationWeight = 0.10f;
+		BudgetWarTradeWeight = 0.10f;
 
 		WarDeclared_TechnologyBudgetFactor = 0.40f;
 		WarDeclared_TradeBudgetFactor = 1.50f;
@@ -940,8 +938,9 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 	else if((Company && Company == ST->InfiniteOrbit) || (CompanyDescription && CompanyDescription->ShortName == FName("IFO")))
 	{
 		PacifismDecrementRate = 0.45f;
-		MaxTradeShipsBuildingPeace = 2;
-		MaxTradeShipsBuildingWar = 1;
+
+		MaxTradeShipsBuildingPeace *= 2;
+		MaxTradeShipsBuildingWar *= 2;
 
 		BudgetMinimumRepairFactor = 1.f;
 

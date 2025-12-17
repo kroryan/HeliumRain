@@ -107,7 +107,7 @@ public:
 	
 
 	/* If client is not null, consider as not identified company*/
-	int32 GetFreeSpaceForResource(FFlareResourceDescription* Resource, UFlareCompany* Client, bool LockOnly = false, uint8 Context = 2, bool IgnoresRestrictionNobody = false) const;
+	int32 GetFreeSpaceForResource(FFlareResourceDescription* Resource, UFlareCompany* Client, bool LockOnly = false, uint8 Context = 2, bool IgnoresRestrictionNobody = false, bool IgnoreHidden = false) const;
 
 	int32 GetTotalCapacityForResource(FFlareResourceDescription* Resource, UFlareCompany* Client, bool LockOnly = false) const;
 

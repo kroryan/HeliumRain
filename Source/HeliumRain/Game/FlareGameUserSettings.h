@@ -173,4 +173,16 @@ public:
 	/** Debris quantity */
 	UPROPERTY(Config)
 	int32                                    DebrisQuantity;
+
+	/** Does the game create combat logs */
+	UPROPERTY(Config)
+	bool                                     CombatLogs;
+
+	/** Does the game create game logs */
+	UPROPERTY(Config)
+	bool                                     GameLogs;
+
+	/** Does the game create bindable key logs */
+	UPROPERTY(Config)
+	bool                                     GameLogsBindableKeys;
 };

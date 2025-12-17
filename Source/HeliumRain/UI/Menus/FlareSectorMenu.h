@@ -165,7 +165,10 @@ protected:
 	void OnOwnedActiveSpacecraftSelectedLeft(TSharedPtr<FInterfaceContainer> SpacecraftContainer);
 
 	void OnOwnedSpacecraftFilterSelected();
+	void OnOwnedSpacecraftReserveFilterSelected();
+
 	void OnOtherSpacecraftFilterSelected();
+	void OnOtherSpacecraftReserveFilterSelected();
 
 protected:
 

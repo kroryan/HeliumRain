@@ -202,8 +202,13 @@ protected:
 	void OnLateralVelocityToggle();
 	void OnMouseMenuConfirmSectorToggle();
 	void OnMouseMenuAutoResetToggle();
-
 	void OnForwardOnlyThrustToggle();
+
+	// Logs
+
+	void OnCombatLogsOutputToggle();
+	void OnGameLogsOutputToggle();
+	void OnBindableKeysOutputToggle();
 
 	// Dead zone sliders
 	void OnMouseCursorDeadZoneSliderChanged(float Value);
@@ -308,6 +313,11 @@ protected:
 
 	// Joystick data
 	TArray<TSharedPtr<FKey>>                    JoystickAxisKeys;
+
+	// Logging options
+	TSharedPtr<SFlareButton>                    CombatLogButton;
+	TSharedPtr<SFlareButton>                    GameLogButton;
+	TSharedPtr<SFlareButton>                    BindableKeysButton;
 
 	// Resolution data
 	TSharedPtr<SFlareDropList<TSharedPtr<FScreenResolutionRHI>>> ResolutionSelector;

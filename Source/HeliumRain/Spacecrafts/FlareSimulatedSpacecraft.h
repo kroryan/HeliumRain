@@ -98,7 +98,6 @@ public:
 	virtual void SetCurrentSector(UFlareSimulatedSector* Sector);
 
 	bool TryMigrateDrones();
-	void DroneAttemptMigration();
 
 	virtual void SetCurrentFleet(UFlareFleet* Fleet)
 	{
@@ -303,6 +302,9 @@ public:
 	void SetNickName(FText NewName)
 	{
 		SpacecraftData.NickName = NewName;
+
+		NickNamePartsCache.Empty();
+		NewName.ToString().ParseIntoArray(NickNamePartsCache, TEXT("-"));
 	}
 
 	void ClearTemporaryCaches();
@@ -372,11 +374,19 @@ protected:
 	TArray<FFlareSpacecraftComponentSave*>						  WeaponComponentPointers;
 	TArray<FFlareSpacecraftComponentDescription*>			 	  WeaponComponentDescriptions;
 
+	FFlareSpacecraftComponentDescription*					 	  RCSComponentDescription;
+	FFlareSpacecraftComponentDescription*					 	  OrbitalEngineComponentDescription;
+
+	UPROPERTY()
+	mutable TArray<FString>									      NickNamePartsCache;
+
 public:
 
     /*----------------------------------------------------
         Getters
     ----------------------------------------------------*/
+
+	const TArray<FString>& GetNickNamePartsCache() const;
 
 	inline AFlareGame* GetGame() const
 	{
@@ -561,6 +571,7 @@ public:
 
 	int32 GetCapturePointThreshold() const;
 
+	float CalculateStationEfficiency(UFlareSimulatedSpacecraft* InitiatedStation = nullptr);
 	float GetStationEfficiency(UFlareSimulatedSpacecraft* InitiatedStation = nullptr);
 
 	float GetDamageRatio();

@@ -97,7 +97,8 @@ public:
 
 	virtual void Scrap(FName ShipImmatriculation, FName TargetStationImmatriculation);
 
-	virtual void ScrapStation(UFlareSimulatedSpacecraft* Station);
+	virtual void ScrapStations(TArray<UFlareSimulatedSpacecraft*> StationsToScrap);
+	virtual void ScrapStation(UFlareSimulatedSpacecraft* Station, bool ReactivateSectorAfter = true);
 
 	/*----------------------------------------------------
 		Save slots

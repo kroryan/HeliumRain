@@ -95,7 +95,7 @@ public:
 	/** Simulate a day */
 	virtual void Simulate(bool GlobalWar, int32 TotalReservedResources);
 
-	void CreateWorldResourceVariations();
+	void CreateWorldResourceVariations(bool ForceCreation = false);
 
 	/** Try to purchase research */
 	virtual void PurchaseResearch();
@@ -266,7 +266,7 @@ protected:
 	float ComputeStationPrice(UFlareSimulatedSector* Sector, FFlareSpacecraftDescription* StationDescription, UFlareSimulatedSpacecraft* Station) const;
 
 	/** Print the resource flow */
-	void DumpSectorResourceVariation(UFlareSimulatedSector* Sector, TMap<FFlareResourceDescription*, struct ResourceVariation>* Variation) const;
+	void DumpSectorResourceVariation(UFlareSimulatedSector* Sector, TMap<FName, struct FResourceVariation>* Variation) const;
 
 
 protected:
@@ -289,8 +289,8 @@ protected:
 	TArray<UFlareSimulatedSpacecraft*>       UnderConstructionUpgradeStations;
 	TArray<UFlareSimulatedSpacecraft*>       UnderConstructionStations;
 
-
-	TMap<UFlareSimulatedSector*, SectorVariation> WorldResourceVariation;
+	UPROPERTY()
+	TMap<UFlareSimulatedSector*, FSectorVariation> WorldResourceVariation;
 
 	TArray<UFlareSimulatedSector*>            SectorWithBattle;
 

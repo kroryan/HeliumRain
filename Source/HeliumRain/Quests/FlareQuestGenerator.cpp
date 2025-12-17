@@ -752,7 +752,7 @@ void UFlareQuestGenerated::AcceptedWarContract(AFlareGame* Game, bool CheckQuest
 				TArray<FName> HostileCompanyNames = InitData.GetNameArray("hostile-companies");
 				for (FName HostileCompanyName : HostileCompanyNames)
 				{
-					UFlareCompany* HostileCompany = Game->GetGameWorld()->FindCompany(HostileCompanyName);
+					HostileCompany = Game->GetGameWorld()->FindCompany(HostileCompanyName);
 					if (HostileCompany)
 					{
 						Sector->UpdateSectorBattleState(HostileCompany);
@@ -1038,6 +1038,11 @@ bool UFlareQuestGeneratedVipTransport::Load(UFlareQuestGenerator* Parent, const 
 	UFlareSimulatedSpacecraft* Station1 = Parent->GetGame()->GetGameWorld()->FindSpacecraft(InitData.GetName("station-1"));
 	UFlareSimulatedSpacecraft* Station2 = Parent->GetGame()->GetGameWorld()->FindSpacecraft(InitData.GetName("station-2"));
 
+	if (!Station1 || !Station2)
+	{
+		return false;
+	}
+
 	FText VIPName = FText::FromString(Data.GetString("vip-name"));
 
 	QuestClass = UFlareQuestGeneratedVipTransport::GetClass();
@@ -1250,6 +1255,11 @@ bool UFlareQuestGeneratedResourceSale::Load(UFlareQuestGenerator* Parent, const 
 	UFlareSimulatedSpacecraft* Station = Parent->GetGame()->GetGameWorld()->FindSpacecraft(InitData.GetName("station"));
 	FFlareResourceDescription* Resource = Parent->GetGame()->GetResourceCatalog()->Get(InitData.GetName("resource"));
 	int32 Quantity = InitData.GetInt32("quantity");
+
+	if (!Station)
+	{
+		return false;
+	}
 
 	QuestClass = UFlareQuestGeneratedResourceSale::GetClass();
 	QuestTypeIdentifier = "Destocking";
@@ -1475,6 +1485,10 @@ bool UFlareQuestGeneratedResourcePurchase::Load(UFlareQuestGenerator* Parent, co
 
 	UFlareSimulatedSector* Sector = Parent->GetGame()->GetGameWorld()->FindSector(InitData.GetName("sector"));
 	UFlareSimulatedSpacecraft* Station = Parent->GetGame()->GetGameWorld()->FindSpacecraft(InitData.GetName("station"));
+	if (!Station)
+	{
+		return false;
+	}	
 	FFlareResourceDescription* Resource = Parent->GetGame()->GetResourceCatalog()->Get(InitData.GetName("resource"));
 	int32 Quantity = InitData.GetInt32("quantity");
 
@@ -1735,6 +1749,12 @@ bool UFlareQuestGeneratedResourceTrade::Load(UFlareQuestGenerator* Parent, const
 	UFlareSimulatedSector* Sector2 = Parent->GetGame()->GetGameWorld()->FindSector(InitData.GetName("sector2"));
 	UFlareSimulatedSpacecraft* Station1 = Parent->GetGame()->GetGameWorld()->FindSpacecraft(InitData.GetName("station1"));
 	UFlareSimulatedSpacecraft* Station2 = Parent->GetGame()->GetGameWorld()->FindSpacecraft(InitData.GetName("station2"));
+
+	if (!Station1 || !Station2)
+	{
+		return false;
+	}
+
 	FFlareResourceDescription* Resource = Parent->GetGame()->GetResourceCatalog()->Get(InitData.GetName("resource"));
 	int32 Quantity = InitData.GetInt32("quantity");
 

@@ -947,7 +947,8 @@ AActor* UFlareSector::GetNearestBody(FVector Location, float* NearestDistance, b
 
 	for (int32 SpacecraftIndex = 0; SpacecraftIndex < SectorSpacecrafts.Num(); SpacecraftIndex++)
 	{
-		AFlareSpacecraft* SpacecraftCandidate = GetSpacecrafts()[SpacecraftIndex];
+		AFlareSpacecraft* SpacecraftCandidate = SectorSpacecrafts[SpacecraftIndex];
+
 		float Distance = FVector::Dist(SpacecraftCandidate->GetActorLocation(), Location) - SpacecraftCandidate->GetMeshScale();
 		if (SpacecraftCandidate != ActorToIgnore && (!NearestCandidateActor || NearestCandidateActorDistance > Distance))
 		{
@@ -1051,7 +1052,7 @@ void UFlareSector::PlaceSpacecraft(AFlareSpacecraft* Spacecraft, FVector Locatio
 {
 	float RandomLocationRadius = InitialLocationRadius;
 	float EffectiveDistance = -1;
-	float Size = (Spacecraft->IsStation() ? 85000 : Spacecraft->GetMeshScale());
+	float Size = (Spacecraft->IsStation() ? (Spacecraft->GetParent()->IsComplex() ? 150000 : 85000) : Spacecraft->GetMeshScale());
 	int Loops = 0;
 
 	do 

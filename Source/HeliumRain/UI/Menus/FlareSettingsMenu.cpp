@@ -638,8 +638,7 @@ void SFlareSettingsMenu::Construct(const FArguments& InArgs)
 							.Toggle(true)
 							.OnClicked(this, &SFlareSettingsMenu::OnVSyncToggle)
 						]
-					]
-					
+					]		
 
 					// Buttons 2
 					+ SVerticalBox::Slot()
@@ -1275,40 +1274,40 @@ void SFlareSettingsMenu::Construct(const FArguments& InArgs)
 
 			// Joystick dead zone (mouse cursor)
 			+ SVerticalBox::Slot()
-				.AutoHeight()
-				.HAlign(HAlign_Left)
+			.AutoHeight()
+			.HAlign(HAlign_Left)
+			[
+				SNew(SBox)
+				.WidthOverride(Theme.ContentWidth)
+				.HAlign(HAlign_Fill)
 				[
-					SNew(SBox)
-					.WidthOverride(Theme.ContentWidth)
-					.HAlign(HAlign_Fill)
+					SNew(SHorizontalBox)
+					// Text
+					+ SHorizontalBox::Slot()
+					.AutoWidth()
+					.Padding(Theme.ContentPadding)
 					[
-						SNew(SHorizontalBox)
-						// Text
-						+ SHorizontalBox::Slot()
-						.AutoWidth()
-						.Padding(Theme.ContentPadding)
+						SNew(SBox)
+						.WidthOverride(LabelSize)
 						[
-							SNew(SBox)
-							.WidthOverride(LabelSize)
-							[
-								SNew(STextBlock)
-								.Text(LOCTEXT("JoystickMouseCursorDeadZone", "Mouse dead zone"))
-								.TextStyle(&Theme.TextFont)
-							]
-						]
-
-						// Slider
-						+ SHorizontalBox::Slot()
-						.VAlign(VAlign_Center)
-						.Padding(Theme.ContentPadding)
-						[
-							SNew(SSlider)
-							.Value(MyGameSettings->MouseCursorDeadZone)
-							.Style(&Theme.SliderStyle)
-							.OnValueChanged(this, &SFlareSettingsMenu::OnMouseCursorDeadZoneSliderChanged)
+							SNew(STextBlock)
+							.Text(LOCTEXT("JoystickMouseCursorDeadZone", "Mouse dead zone"))
+							.TextStyle(&Theme.TextFont)
 						]
 					]
+
+					// Slider
+					+ SHorizontalBox::Slot()
+					.VAlign(VAlign_Center)
+					.Padding(Theme.ContentPadding)
+					[
+						SNew(SSlider)
+						.Value(MyGameSettings->MouseCursorDeadZone)
+						.Style(&Theme.SliderStyle)
+						.OnValueChanged(this, &SFlareSettingsMenu::OnMouseCursorDeadZoneSliderChanged)
+					]
 				]
+			]
 
 			// Joystick dead zone (rotation)
 			+ SVerticalBox::Slot()
@@ -1424,9 +1423,89 @@ void SFlareSettingsMenu::Construct(const FArguments& InArgs)
 				]
 			]
 		]
+
+		// Keyboard
+		+ SFlareTabView::Slot()
+		.Header(LOCTEXT("LoggingTab", "Logging"))
+		.HeaderHelp(LOCTEXT("LoggingTabnfo", "Change game logging settings"))
+		[
+			SNew(SVerticalBox)
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.Padding(Theme.TitlePadding)
+			.HAlign(HAlign_Left)
+			[
+				SNew(STextBlock)
+				.Text(LOCTEXT("LoggingSettingsHint", "Logging"))
+				.TextStyle(&Theme.SubTitleFont)
+			]
+
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.Padding(Theme.ContentPadding)
+			[
+				SNew(STextBlock)
+				.Text(LOCTEXT("LoggingBindingsHint", "Control what the game automatically records to text log files in the save game folder."))
+				.TextStyle(&Theme.TextFont)
+			]
+
+			// Buttons
+			+SVerticalBox::Slot()
+			.AutoHeight()
+			.Padding(Theme.ContentPadding)
+			.HAlign(HAlign_Left)
+			[
+				SNew(SHorizontalBox)
+
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				.Padding(Theme.SmallContentPadding)
+				[
+					SAssignNew(GameLogButton, SFlareButton)
+						.Text(LOCTEXT("GameLog", "GameLog"))
+						.HelpText(LOCTEXT("GameLogInfo", "Enable logging of when game loads, days simulated and when AI builds stations and completes research"))
+						.Toggle(true)
+						.OnClicked(this, &SFlareSettingsMenu::OnGameLogsOutputToggle)
+				]
+			]
+
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.Padding(Theme.ContentPadding)
+			.HAlign(HAlign_Left)
+			[
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				.Padding(Theme.SmallContentPadding)
+				[
+					SAssignNew(CombatLogButton, SFlareButton)
+					.Text(LOCTEXT("CombatLog", "CombatLog"))
+					.HelpText(LOCTEXT("CombatLogInfo", "Enable simulated combat logging"))
+					.Toggle(true)
+					.OnClicked(this, &SFlareSettingsMenu::OnCombatLogsOutputToggle)
+				]
+
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				.Padding(Theme.SmallContentPadding)
+				[
+					SAssignNew(BindableKeysButton, SFlareButton)
+					.Text(LOCTEXT("BindableKeys", "BindableKeys"))
+					.HelpText(LOCTEXT("BindableKeysInfo", "Enable logging of the bindable keys the game detects. To trigger this the game must be fully started (in a player ship) and then go to the settings page and click one of the joystick axis to generated information to the log"))
+					.Toggle(true)
+					.OnClicked(this, &SFlareSettingsMenu::OnBindableKeysOutputToggle)
+				]
+			]
+		]
 	];
 
 	// Default settings
+
+	CombatLogButton->SetActive(MyGameSettings->CombatLogs);
+	GameLogButton->SetActive(MyGameSettings->GameLogs);
+	BindableKeysButton->SetActive(MyGameSettings->GameLogsBindableKeys);
+
 	ForwardOnlyThrustButton->SetActive(MyGameSettings->ForwardOnlyThrust);
 	VSyncButton->SetActive(MyGameSettings->IsVSyncEnabled());
 	MotionBlurButton->SetActive(MyGameSettings->UseMotionBlur);
@@ -2530,6 +2609,33 @@ void SFlareSettingsMenu::OnForwardOnlyThrustToggle()
 	MyGameSettings->ApplySettings(false);
 }
 
+void SFlareSettingsMenu::OnCombatLogsOutputToggle()
+{
+	bool New = CombatLogButton->IsActive();
+
+	UFlareGameUserSettings* MyGameSettings = Cast<UFlareGameUserSettings>(GEngine->GetGameUserSettings());
+	MyGameSettings->CombatLogs = New;
+	MyGameSettings->ApplySettings(false);
+}
+
+void SFlareSettingsMenu::OnGameLogsOutputToggle()
+{
+	bool New = GameLogButton->IsActive();
+
+	UFlareGameUserSettings* MyGameSettings = Cast<UFlareGameUserSettings>(GEngine->GetGameUserSettings());
+	MyGameSettings->GameLogs = New;
+	MyGameSettings->ApplySettings(false);
+}
+
+void SFlareSettingsMenu::OnBindableKeysOutputToggle()
+{
+	bool New = BindableKeysButton->IsActive();
+
+	UFlareGameUserSettings* MyGameSettings = Cast<UFlareGameUserSettings>(GEngine->GetGameUserSettings());
+	MyGameSettings->GameLogsBindableKeys = New;
+	MyGameSettings->ApplySettings(false);
+}
+
 void SFlareSettingsMenu::OnAnticollisionToggle()
 {
 	bool New = AnticollisionButton->IsActive();
@@ -2793,13 +2899,18 @@ void SFlareSettingsMenu::OnKeyBindingChanged(FKey PreviousKey, FKey NewKey, SFla
 void SFlareSettingsMenu::FillJoystickAxisList()
 {
 	// Get keys
+	UFlareGameUserSettings* MyGameSettings = Cast<UFlareGameUserSettings>(GEngine->GetGameUserSettings());
+
 	JoystickAxisKeys.Empty();
 	TArray<FKey> AllKeys;
 	EKeys::GetAllKeys(AllKeys);
 	for (FKey Key : AllKeys)
 	{
 //		FLOGV("SFlareSettingsMenu::FillJoystickAxis KEY: %s", *Key.ToString());
-//		GameLog::GenericEvent(Key.ToString());
+		if (MyGameSettings->GameLogsBindableKeys)
+		{
+			GameLog::GenericEvent(Key.ToString());
+		}
 
 		if (Key.GetFName().ToString().StartsWith("Joystick") && !Key.GetFName().ToString().Contains("Button"))
 		{

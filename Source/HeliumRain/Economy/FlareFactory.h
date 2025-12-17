@@ -29,9 +29,10 @@ public:
 	   Gameplay
 	----------------------------------------------------*/
 
+	void SetHasRequiredTechnologiesDefault();
 	void SetHascheckedforrequiredtechnologies(bool NewValue);
-	void UpdateHasrequiredtechnologies();
-	bool OwnerCompanyHasRequiredTechnologies();
+	void UpdateHasrequiredtechnologies(bool CanLock = true);
+	bool OwnerCompanyHasRequiredTechnologies(bool CanLock = true);
 
 	void Simulate();
 

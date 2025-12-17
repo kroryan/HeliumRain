@@ -101,7 +101,7 @@ void UFlareResourceCatalog::InitialSetup(AFlareGame* GameMode)
 	ConsumerResources.Sort(SortByResourceType);
 	MaintenanceResources.Sort(SortByResourceType);
 
-	if (GetModifiedResources().Num() > 0)
+	if (ModifiedResources.Num() > 0)
 	{
 // Due to resources being directly referenced in the data we must find and alter all their direct references to the current version of the resource
 

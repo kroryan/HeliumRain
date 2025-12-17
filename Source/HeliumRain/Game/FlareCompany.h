@@ -270,6 +270,9 @@ protected:
 	TArray<UFlareSimulatedSpacecraft*>      CompanyChildStations;
 
 	UPROPERTY()
+	TArray<UFlareSimulatedSpacecraft*>      CompanyDeadChildStations;
+
+	UPROPERTY()
 	TArray<UFlareSimulatedSpacecraft*>      CompanyShips;
 
 	UPROPERTY()
@@ -310,6 +313,7 @@ protected:
 	TArray<UFlareSimulatedSpacecraft*>      CompanyCarriers;
 	TMap<FName, UFlareSimulatedSpacecraft*>	CompanySpacecraftsCache;
 	TMap<FName, UFlareSimulatedSpacecraft*>	CompanyDeadSpacecraftsCache;
+	TMap<FName, UFlareSimulatedSpacecraft*>	CompanySpacecraftsComplexElementsCache;
 	TMap<UFlareSimulatedSector*, int64>		LicenseStationCache;
 
 	mutable struct CompanyValue						CompanyValueCache;
@@ -550,7 +554,7 @@ public:
 		return NULL;
 	}
 
-	UFlareSimulatedSpacecraft* FindSpacecraft(FName ShipImmatriculation, bool Destroyed = false);
+	UFlareSimulatedSpacecraft* FindSpacecraft(FName ShipImmatriculation, bool Destroyed = false, bool LookForComplexElements = false);
 
 	bool HasVisitedSector(const UFlareSimulatedSector* Sector) const;
 
@@ -619,7 +623,7 @@ public:
 
 	int32 GetCaptureShipOrderCountInSector(UFlareSimulatedSector* Sector);
 
-	UFlareSimulatedSpacecraft* FindChildStation(FName StationImmatriculation);
+	UFlareSimulatedSpacecraft* FindChildStation(FName StationImmatriculation, bool CheckDead = false);
 
 	TArray<FFlareTransactionLogEntry> const& GetTransactionLog() const
 	{

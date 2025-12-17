@@ -8,7 +8,7 @@
 #include "FlareGameTypes.generated.h"
 
 #define AI_MAX_STATION_PER_SECTOR 40
-#define AI_MAX_COMPLEX_PER_SECTOR 3
+#define AI_MAX_COMPLEX_PER_SECTOR 2
 
 class AFlareSpacecraft;
 

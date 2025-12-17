@@ -62,9 +62,9 @@ FFlareFactorySave* UFlareFactory::Save()
 }
 
 
-bool UFlareFactory::OwnerCompanyHasRequiredTechnologies()
+bool UFlareFactory::OwnerCompanyHasRequiredTechnologies(bool CanLock)
 {
-	UpdateHasrequiredtechnologies();
+	UpdateHasrequiredtechnologies(CanLock);
 	return Hasrequiredtechnologies;
 }
 
@@ -74,7 +74,18 @@ void UFlareFactory::SetHascheckedforrequiredtechnologies(bool NewValue)
 	UpdateHasrequiredtechnologies();
 }
 
-void UFlareFactory::UpdateHasrequiredtechnologies()
+void UFlareFactory::SetHasRequiredTechnologiesDefault()
+{
+	Hascheckedforrequiredtechnologies = true;
+	Hasrequiredtechnologies = true;
+	Factory_Efficiency_ProductionChange = FACTORY_EFFICIENCY_CHANGE_DURATIONCHANGE;
+	Factory_Efficiency_DoProduction = FACTORY_EFFICIENCY_CHANGE_DOPRODUCTION;
+	Factory_Efficiency_Minimum = FACTORY_EFFICIENCY_MIN;
+	Factory_Efficiency_Maximum = FACTORY_EFFICIENCY_MAX;
+}
+
+
+void UFlareFactory::UpdateHasrequiredtechnologies(bool CanLock)
 {
 	if (Hascheckedforrequiredtechnologies)
 	{
@@ -107,7 +118,7 @@ void UFlareFactory::UpdateHasrequiredtechnologies()
 			}
 		}
 
-		if (!PreviousHasrequiredtechnologies && Hasrequiredtechnologies)
+		if (CanLock && !PreviousHasrequiredtechnologies && Hasrequiredtechnologies && !Parent->IsUnderConstruction())
 		{
 			Parent->LockResources();
 		}
@@ -117,13 +128,7 @@ void UFlareFactory::UpdateHasrequiredtechnologies()
 	Factory_Efficiency_DoProduction = FACTORY_EFFICIENCY_CHANGE_DOPRODUCTION;
 	Factory_Efficiency_Minimum = FACTORY_EFFICIENCY_MIN;
 	Factory_Efficiency_Maximum = FACTORY_EFFICIENCY_MAX;
-/*
-	if (Parent->GetCompany()->IsTechnologyUnlockedStation(Parent->GetDescription()))
-	{
-		Factory_Efficiency_Minimum -= 0.10f;
-		Factory_Efficiency_Maximum -= 0.20f;
-	}
-*/
+
 	for (int TechnologyEffectsIndex = 0; TechnologyEffectsIndex < GetDescription()->TechnologiesEffects.Num(); TechnologyEffectsIndex++)
 	{
 		FFlareFactoryTechnologyEffects CurrentTechnologyEffect = GetDescription()->TechnologiesEffects[TechnologyEffectsIndex];
@@ -463,10 +468,14 @@ bool UFlareFactory::HasOutputFreeSpace()
 /*
 	if (Parent->IsComplexElement())
 	{
-		FLOGV("%d output size after GetLimitedOutputResources to %s in %s", OutputResources.Num(), *Parent->GetImmatriculation().ToString(), *Parent->GetCurrentSector()->GetName());
+		FLOGV("UFlareFactory::HasOutputFreeSpace %d output size after GetLimitedOutputResources to %s in %s", OutputResources.Num(), *Parent->GetImmatriculation().ToString(), *Parent->GetCurrentSector()->GetName());
 	}
 */
-	// First, fill already existing locked slots
+
+//	FLOGV("UFlareFactory::HasOutputFreeSpace %d output size after GetLimitedOutputResources to %s in %s", OutputResources.Num(), *Parent->GetImmatriculation().ToString(), *Parent->GetCurrentSector()->GetName());
+
+// First, fill already existing locked slots
+	int32 CargoSlotCapacity = CargoBay->GetSlotCapacity();
 	for (int32 CargoIndex = 0 ; CargoIndex < CargoBay->GetSlotCount() ; CargoIndex++)
 	{
 		FFlareCargo* CargoBaySlot = CargoBay->GetSlot(CargoIndex);
@@ -484,14 +493,18 @@ bool UFlareFactory::HasOutputFreeSpace()
 		for (int32 ResourceIndex = OutputResources.Num() -1 ; ResourceIndex >= 0; ResourceIndex--)
 		{
 			if (&OutputResources[ResourceIndex].Resource->Data == CargoBaySlot->Resource)
+//			if (CargoBaySlot->Resource && OutputResources[ResourceIndex].Resource->Data.Identifier == CargoBaySlot->Resource->Identifier)
 			{
 				// Same resource
 					
-				int32 AvailableCapacity = CargoBay->GetSlotCapacity() - CargoBaySlot->Quantity;
+				int32 AvailableCapacity = CargoSlotCapacity - CargoBaySlot->Quantity;
 
 				if (AvailableCapacity > 0)
 				{
 					int32 QuantityAfterEfficiency = OutputResources[ResourceIndex].Quantity * FactoryData.FactoryEfficiency;
+
+//					FLOGV("UFlareFactory::HasOutputFreeSpace %s QuantityAfterEfficiency = %d AvailableCapacity = %d", *CargoBaySlot->Resource->Identifier.ToString(), QuantityAfterEfficiency, AvailableCapacity);
+
 					QuantityAfterEfficiency -= FMath::Min(AvailableCapacity, QuantityAfterEfficiency);
 
 					if (QuantityAfterEfficiency <= 0)
@@ -529,8 +542,9 @@ bool UFlareFactory::HasOutputFreeSpace()
 		if (CargoBaySlot->Quantity == 0 && CargoBaySlot->Resource == NULL)
 		{
 			// Empty slot, fill it
+
 			int32 QuantityAfterEfficiency = OutputResources[0].Quantity * FactoryData.FactoryEfficiency;
-			QuantityAfterEfficiency -= FMath::Min(CargoBay->GetSlotCapacity(), QuantityAfterEfficiency);
+			QuantityAfterEfficiency -= FMath::Min(CargoSlotCapacity, QuantityAfterEfficiency);
 
 			if (QuantityAfterEfficiency <= 0)
 			{
@@ -545,9 +559,10 @@ bool UFlareFactory::HasOutputFreeSpace()
 /*
 	if (Parent->IsComplexElement())
 	{
-		FLOGV("%d output size after Attempting to find existing or free crago to %s in %s", OutputResources.Num(), *Parent->GetImmatriculation().ToString(), *Parent->GetCurrentSector()->GetName());
+		FLOGV("UFlareFactory::HasOutputFreeSpace %d output size after Attempting to find existing or free crago to %s in %s", OutputResources.Num(), *Parent->GetImmatriculation().ToString(), *Parent->GetCurrentSector()->GetName());
 	}
 */
+
 	return OutputResources.Num() == 0;
 }
 
@@ -1006,24 +1021,25 @@ const FFlareProductionData& UFlareFactory::GetCycleData()
 	{
 		return GetCycleDataForShipClass(FactoryData.TargetShipClass);
 	}
-	else if (Parent->GetLevel() == CycleCostCacheLevel)
+	else if (Parent->GetLevel() == CycleCostCacheLevel || (IsStationConstructionFactory && CycleCostCacheLevel == 1))
 	{
 		return CycleCostCache;
 	}
 	else
 	{
-		CycleCostCacheLevel = Parent->IsUnderConstruction() ? 1 : Parent->GetLevel();
+		CycleCostCacheLevel = 1;
+		if (!IsStationConstructionFactory)
+		{
+			CycleCostCacheLevel = Parent->GetLevel();
+		} 
+
 		CycleCostCache.ProductionTime = FactoryDescription->CycleCost.ProductionTime;
 		CycleCostCache.ProductionCost = FactoryDescription->CycleCost.ProductionCost * CycleCostCacheLevel;
 		CycleCostCache.InputResources = FactoryDescription->CycleCost.InputResources;
-/*
-GetModifiedResources()
-*/
+
 		for (int32 ResourceIndex = 0 ; ResourceIndex < CycleCostCache.InputResources.Num() ; ResourceIndex++)
 		{
 			FFlareFactoryResource* Resource = &CycleCostCache.InputResources[ResourceIndex];
-			Resource->Resource->Data.Identifier;
-
 			Resource->Quantity *= CycleCostCacheLevel;
 		}
 
@@ -1032,7 +1048,12 @@ GetModifiedResources()
 		{
 			FFlareFactoryResource* Resource = &CycleCostCache.OutputResources[ResourceIndex];
 			Resource->Quantity *= CycleCostCacheLevel;
+
+//			FLOGV("UFlareFactory::GetCycleData Resource Identifier = %s added to outputs with %d quantity", *Resource->Resource->Data.Identifier.ToString(), Resource->Quantity);
 		}
+
+//		FLOGV("UFlareFactory::GetCycleData %s created cycle cost cache", *Parent->GetImmatriculation().ToString());
+
 		return CycleCostCache;
 	}
 }
@@ -1084,6 +1105,7 @@ TArray<FFlareFactoryResource> UFlareFactory::GetLimitedOutputResources()
 {
 	UFlareCargoBay* CargoBay = Parent->GetActiveCargoBayFromFactory(this);
 	TArray<FFlareFactoryResource> OutputResources = GetCycleData().OutputResources;
+
 	for (int32 CargoLimitIndex = 0 ; CargoLimitIndex < FactoryData.OutputCargoLimit.Num() ; CargoLimitIndex++)
 	{
 		int32 MaxCapacity = CargoBay->GetSlotCapacity() * FactoryData.OutputCargoLimit[CargoLimitIndex].Quantity;
@@ -1102,11 +1124,17 @@ TArray<FFlareFactoryResource> UFlareFactory::GetLimitedOutputResources()
 
 		for (int32 ResourceIndex = OutputResources.Num() -1 ; ResourceIndex >= 0; ResourceIndex--)
 		{
+			FName CurrentResourceIdentifier = OutputResources[ResourceIndex].Resource->Data.Identifier;
+
+//			FLOGV("UFlareFactory::GetLimitedOutputResources Resource Identifier = %s. Comparison to %s", *CurrentResourceIdentifier.ToString(), *Resource->Identifier.ToString());
+
 			if (&OutputResources[ResourceIndex].Resource->Data == Resource)
 			{
 				int32 QuantityAfterEfficiency = OutputResources[ResourceIndex].Quantity * FactoryData.FactoryEfficiency;
 
 				QuantityAfterEfficiency = FMath::Min(MaxAddition, QuantityAfterEfficiency);
+
+//				FLOGV("UFlareFactory::GetLimitedOutputResources %s Quantity = %d, efficiency = %f. after efficiency = %d", *OutputResources[ResourceIndex].Resource->Data.Identifier.ToString(), OutputResources[ResourceIndex].Quantity,FactoryData.FactoryEfficiency,QuantityAfterEfficiency);
 
 				if (QuantityAfterEfficiency <= 0)
 				{

@@ -54,6 +54,7 @@ void UFlareDebrisField::Setup(AFlareGame* GameMode, UFlareSimulatedSector* Secto
 		FLOGV("UFlareDebrisField::Setup : debris catalog is %s", *DebrisFieldMeshes->GetName());
 		FLOGV("UFlareDebrisField::Setup : spawning debris field : gen %d, size = %d, icy = %d", CurrentGenerationIndex, DebrisCount, Sector->GetDescription()->IsIcy);
 
+		NewDebris.Reserve(DebrisCount);
 		for (int32 Index = 0; Index < DebrisCount; Index++)
 		{
 			int32 DebrisIndex = FMath::RandRange(0, DebrisFieldMeshes->Asteroids.Num() - 1);
@@ -90,7 +91,6 @@ void UFlareDebrisField::Reset()
 	FLOGV("UFlareDebrisField::Reset : clearing debris field, size = %d", DebrisField.Num());
 	for (int i = 0; i < DebrisField.Num(); i++)
 	{
-//		Game->GetWorld()->DestroyActor(DebrisField[i]);
 		Game->GetCacheSystem()->StoreCachedDebris(DebrisField[i]);
 		DebrisField[i]->SetActorEnableCollision(false);
 		DebrisField[i]->SetActorHiddenInGame(true);

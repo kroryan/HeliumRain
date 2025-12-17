@@ -1930,7 +1930,7 @@ FVector2D AFlareHUD::DrawHUDDesignatorHint(FVector2D Position, float DesignatorI
 		Position = DrawHUDDesignatorStatusIcon(Position, DesignatorIconSize, HUDContractIcon, Color);
 	}
 
-	if (TargetSpacecraft->GetParent()->IsShipyard())
+	if (!TargetSpacecraft->GetDescription()->IsDroneCarrier && TargetSpacecraft->GetParent()->IsShipyard())
 	{
 		Position = DrawHUDDesignatorStatusIcon(Position, DesignatorIconSize, HUDShipyardIcon, Color);
 	}

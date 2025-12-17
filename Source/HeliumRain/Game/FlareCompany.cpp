@@ -46,12 +46,12 @@ void UFlareCompany::Load(const FFlareCompanySave& Data)
 	CompanyData.Identifier = FName(*GetName());
 
 	ThisIsPlayerCompany = false;
-	int32 Technology_TradeRouteSectors = 0;
-	float Technology_RepairBonus = 0.f;
-	float Technology_DiplomaticPenaltyBonus = 0.f;
-	float Technology_DiplomaticBonus = 0.f;
-	float Technology_TravelBonus = 0.f;
-	float Technology_ShipyardFabBonus = 0.f;
+	Technology_TradeRouteSectors = 0;
+	Technology_RepairBonus = 0.f;
+	Technology_DiplomaticPenaltyBonus = 0.f;
+	Technology_DiplomaticBonus = 0.f;
+	Technology_TravelBonus = 0.f;
+	Technology_ShipyardFabBonus = 0.f;
 
 	// Player description ID is -1
 	if (Data.CatalogIdentifier >= 0)
@@ -78,6 +78,14 @@ void UFlareCompany::Load(const FFlareCompanySave& Data)
 		UnlockTechnology(CompanyData.UnlockedTechnologies[i], true, false, false, false);
 	}	
 
+	for (int32 i = 0; i < CompanyData.Licenses.LicenseBuilding.Num(); i++)
+	{
+		UFlareSimulatedSector* Sector = GetGame()->GetGameWorld()->FindSector(CompanyData.Licenses.LicenseBuilding[i]);
+		if (Sector)
+		{
+			BuyStationLicense(Sector, true);
+		}
+	}
 	// Load ships
 	for (int i = 0 ; i < CompanyData.ShipData.Num(); i++)
 	{
@@ -150,7 +158,7 @@ void UFlareCompany::PostLoad()
 
 			if (!(Spacecraft->IsComplexElement()))
 			{
-				AddOrRemoveCompanySectorStation(Spacecraft,false);
+				AddOrRemoveCompanySectorStation(Spacecraft, false);
 			}
 		}
 	}
@@ -180,6 +188,15 @@ void UFlareCompany::PostLoad()
 	{
 		GiveAllStationSectorLicenses();
 		CompanyData.Licenses.HasRecievedStartingLicenses = true;
+	}
+
+	for (int i = 0; i < CompanyStations.Num(); i++)
+	{
+		UFlareSimulatedSpacecraft* Spacecraft = CompanyStations[i];
+		if (Spacecraft->IsStation())
+		{
+			Spacecraft->CalculateStationEfficiency();
+		}
 	}
 
 	// Load all trade routes
@@ -240,41 +257,49 @@ FFlareCompanySave* UFlareCompany::Save()
 		}
 	}
 
+	CompanyData.Fleets.Reserve(CompanyFleets.Num());
 	for (int i = 0 ; i < CompanyFleets.Num(); i++)
 	{
 		CompanyData.Fleets.Add(*CompanyFleets[i]->Save());
 	}
 
+	CompanyData.TradeRoutes.Reserve(CompanyTradeRoutes.Num());
 	for (int i = 0 ; i < CompanyTradeRoutes.Num(); i++)
 	{
 		CompanyData.TradeRoutes.Add(*CompanyTradeRoutes[i]->Save());
 	}
 
+	CompanyData.WhiteLists.Reserve(CompanyWhiteLists.Num());
 	for (int i = 0; i < CompanyWhiteLists.Num(); i++)
 	{
 		CompanyData.WhiteLists.Add(*CompanyWhiteLists[i]->Save());
 	}
 
+	CompanyData.ShipData.Reserve(CompanyShips.Num());
 	for (int i = 0 ; i < CompanyShips.Num(); i++)
 	{
 		CompanyData.ShipData.Add(*CompanyShips[i]->Save());
 	}
 
+	CompanyData.ChildStationData.Reserve(CompanyChildStations.Num());
 	for (int i = 0 ; i < CompanyChildStations.Num(); i++)
 	{
 		CompanyData.ChildStationData.Add(*CompanyChildStations[i]->Save());
 	}
 
+	CompanyData.StationData.Reserve(CompanyStations.Num());
 	for (int i = 0 ; i < CompanyStations.Num(); i++)
 	{
 		CompanyData.StationData.Add(*CompanyStations[i]->Save());
 	}
 
+	CompanyData.DestroyedSpacecraftData.Reserve(CompanyDestroyedSpacecrafts.Num());
 	for (int i = 0 ; i < CompanyDestroyedSpacecrafts.Num(); i++)
 	{
 		CompanyData.DestroyedSpacecraftData.Add(*CompanyDestroyedSpacecrafts[i]->Save());
 	}
 
+	CompanyData.SectorsKnowledge.Reserve(VisitedSectors.Num());
 	for (int i = 0 ; i < VisitedSectors.Num(); i++)
 	{
 		FFlareCompanySectorKnowledge SectorKnowledge;
@@ -295,6 +320,7 @@ FFlareCompanySave* UFlareCompany::Save()
 		}
 	}
 
+	CompanyData.UnlockedTechnologies.Reserve(UnlockedTechnologies.Num());
 	for (auto& Technology : UnlockedTechnologies)
 	{
 		CompanyData.UnlockedTechnologies.Add(Technology.Key);
@@ -1123,11 +1149,11 @@ bool UFlareCompany::CanTradeWhiteListFrom(UFlareCompany* OtherCompany, FFlareRes
 	UFlareCompanyWhiteList* ActiveWhiteList = GetCompanySelectedWhiteList();
 	if (ActiveWhiteList)
 	{
-		FFlareWhiteListCompanyDataSave* CompanyData = ActiveWhiteList->GetCompanyDataFor(OtherCompany);
-		if (CompanyData)
+		FFlareWhiteListCompanyDataSave* CompanyDataFor = ActiveWhiteList->GetCompanyDataFor(OtherCompany);
+		if (CompanyDataFor)
 		{
 			FText Reason;
-			if (!ActiveWhiteList->CanCompanyDataTradeTo(CompanyData, Resource, Reason))
+			if (!ActiveWhiteList->CanCompanyDataTradeTo(CompanyDataFor, Resource, Reason))
 			{
 				return false;
 			}
@@ -1145,11 +1171,11 @@ bool UFlareCompany::CanTradeWhiteListTo(UFlareCompany* OtherCompany, FFlareResou
 	UFlareCompanyWhiteList* ActiveWhiteList = GetCompanySelectedWhiteList();
 	if (ActiveWhiteList)
 	{
-		FFlareWhiteListCompanyDataSave* CompanyData = ActiveWhiteList->GetCompanyDataFor(OtherCompany);
-		if (CompanyData)
+		FFlareWhiteListCompanyDataSave* CompanyDataFor = ActiveWhiteList->GetCompanyDataFor(OtherCompany);
+		if (CompanyDataFor)
 		{
 			FText Reason;
-			if (!ActiveWhiteList->CanCompanyDataTradeFrom(CompanyData, Resource, Reason))
+			if (!ActiveWhiteList->CanCompanyDataTradeFrom(CompanyDataFor, Resource, Reason))
 			{
 				return false;
 			}
@@ -1237,6 +1263,14 @@ UFlareSimulatedSpacecraft* UFlareCompany::LoadSpacecraft(const FFlareSpacecraftS
 		{
 			CompanyDestroyedSpacecrafts.AddUnique(Spacecraft);
 			CompanyDeadSpacecraftsCache.Emplace(Spacecraft->GetImmatriculation());
+
+			if (Spacecraft->IsStation())
+			{
+				if (Spacecraft->IsComplexElement())
+				{
+					CompanyDeadChildStations.AddUnique(Spacecraft);
+				}
+			}
 		}
 		else
 		{
@@ -1276,6 +1310,10 @@ UFlareSimulatedSpacecraft* UFlareCompany::LoadSpacecraft(const FFlareSpacecraftS
 				CompanySpacecrafts.AddUnique((Spacecraft));
 				CompanySpacecraftsCache.Emplace(Spacecraft->GetImmatriculation(), Spacecraft);
 			}
+			else
+			{
+				CompanySpacecraftsComplexElementsCache.Emplace(Spacecraft->GetImmatriculation(), Spacecraft);
+			}
 		}
 	}
 	else
@@ -1313,6 +1351,7 @@ void UFlareCompany::DestroySpacecraft(UFlareSimulatedSpacecraft* Spacecraft)
 
 	Spacecraft->ResetCapture();
 	CompanySpacecraftsCache.Remove(Spacecraft->GetImmatriculation());
+	CompanySpacecraftsComplexElementsCache.Remove(Spacecraft->GetImmatriculation());
 	CompanySpacecrafts.Remove(Spacecraft);
 	CompanyStationComplexes.Remove(Spacecraft);
 	CompanyStations.Remove(Spacecraft);
@@ -3138,10 +3177,13 @@ const struct CompanyValue UFlareCompany::GetCompanyValue(UFlareSimulatedSector* 
 
 			if (Spacecraft->GetSize() == EFlarePartSize::S)
 			{
-				CompanyValue.TotalShipCountMilitaryS++;
-				if (Spacecraft->GetEquippedSalvagerCount())
+				if (!Spacecraft->GetDescription()->IsDroneShip)
 				{
-					CompanyValue.TotalShipCountMilitarySSalvager++;
+					CompanyValue.TotalShipCountMilitaryS++;
+					if (Spacecraft->GetEquippedSalvagerCount())
+					{
+						CompanyValue.TotalShipCountMilitarySSalvager++;
+					}
 				}
 			}
 			else
@@ -3252,12 +3294,21 @@ const struct CompanyValue UFlareCompany::GetCompanyValue(UFlareSimulatedSector* 
 	return CompanyValue;
 }
 
-UFlareSimulatedSpacecraft* UFlareCompany::FindSpacecraft(FName ShipImmatriculation, bool Destroyed)
+UFlareSimulatedSpacecraft* UFlareCompany::FindSpacecraft(FName ShipImmatriculation, bool Destroyed, bool LookForComplexElements)
 {
 	UFlareSimulatedSpacecraft* const* FoundSpacecraftInCache = CompanySpacecraftsCache.Find(ShipImmatriculation);
 	if (FoundSpacecraftInCache)
 	{
 		return *FoundSpacecraftInCache;
+	}
+
+	if (LookForComplexElements)
+	{
+		FoundSpacecraftInCache = CompanySpacecraftsComplexElementsCache.Find(ShipImmatriculation);
+		if (FoundSpacecraftInCache)
+		{
+			return *FoundSpacecraftInCache;
+		}
 	}
 
 	if (Destroyed)
@@ -3302,7 +3353,6 @@ FText UFlareCompany::GetPlayerHostilityText() const
 bool UFlareCompany::IsPlayerCompany() const
 {
 	return ThisIsPlayerCompany;
-//	return this == Game->GetPC()->GetCompany();
 }
 
 bool UFlareCompany::WantCapture(UFlareSimulatedSpacecraft const* Station) const
@@ -3333,24 +3383,30 @@ int32 UFlareCompany::GetCaptureShipOrderCountInSector(UFlareSimulatedSector* Sec
 		{
 			++Orders;
 		}
-/*
-		FFlareSpacecraftSave& Data = Ship->GetData();
-		if (Data.HarpoonCompany==this->GetIdentifier())
-		{
-			++Orders;
-		}
-*/
 	}
 	return Orders;
 }
 
-UFlareSimulatedSpacecraft* UFlareCompany::FindChildStation(FName StationImmatriculation)
+UFlareSimulatedSpacecraft* UFlareCompany::FindChildStation(FName StationImmatriculation, bool CheckDead)
 {
-	for (UFlareSimulatedSpacecraft* Spacecraft : CompanyChildStations)
+	if (CheckDead)
 	{
-		if (Spacecraft->GetImmatriculation() == StationImmatriculation)
+		for (UFlareSimulatedSpacecraft* Spacecraft : CompanyDeadChildStations)
 		{
-			return Spacecraft;
+			if (Spacecraft->GetImmatriculation() == StationImmatriculation)
+			{
+				return Spacecraft;
+			}
+		}
+	}
+	else
+	{
+		for (UFlareSimulatedSpacecraft* Spacecraft : CompanyChildStations)
+		{
+			if (Spacecraft->GetImmatriculation() == StationImmatriculation)
+			{
+				return Spacecraft;
+			}
 		}
 	}
 	return nullptr;

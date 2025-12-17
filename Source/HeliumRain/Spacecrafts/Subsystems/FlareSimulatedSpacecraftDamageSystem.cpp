@@ -78,7 +78,6 @@ void UFlareSimulatedSpacecraftDamageSystem::SetDead()
 	int32 ComponentsNum = Components.Num();
 
 	TArray<FFlareSpacecraftComponentDescription*> AllComponentDescriptions = Spacecraft->GetAllComponentDescriptions();
-
 	for (int32 ComponentIndex = 0; ComponentIndex < ComponentsNum; ++ComponentIndex)
 	{
 		FFlareSpacecraftComponentSave& ComponentData = Components[ComponentIndex];
@@ -582,7 +581,8 @@ float UFlareSimulatedSpacecraftDamageSystem::GetSubsystemHealthInternal(EFlareSu
 {
 	SCOPE_CYCLE_COUNTER(STAT_FlareSimulatedDamageSystem_UpdateSubsystemHealth);
 
-	UFlareSpacecraftComponentsCatalog* Catalog = Spacecraft->GetGame()->GetShipPartsCatalog();
+	TArray<FFlareSpacecraftComponentDescription*> AllComponentDescriptions = Spacecraft->GetAllComponentDescriptions();
+//	UFlareSpacecraftComponentsCatalog* Catalog = Spacecraft->GetGame()->GetShipPartsCatalog();
 	float Health = 0.f;
 
 	switch (Type)
@@ -594,8 +594,7 @@ float UFlareSimulatedSpacecraftDamageSystem::GetSubsystemHealthInternal(EFlareSu
 			for (int32 ComponentIndex = 0; ComponentIndex < Data->Components.Num(); ComponentIndex++)
 			{
 				FFlareSpacecraftComponentSave* ComponentData = &Data->Components[ComponentIndex];
-
-				FFlareSpacecraftComponentDescription* ComponentDescription = Catalog->Get(ComponentData->ComponentIdentifier);
+				FFlareSpacecraftComponentDescription* ComponentDescription = AllComponentDescriptions[ComponentIndex];
 
 				if (ComponentDescription->Type == EFlarePartType::OrbitalEngine)
 				{
@@ -615,8 +614,7 @@ float UFlareSimulatedSpacecraftDamageSystem::GetSubsystemHealthInternal(EFlareSu
 			for (int32 ComponentIndex = 0; ComponentIndex < Data->Components.Num(); ComponentIndex++)
 			{
 				FFlareSpacecraftComponentSave* ComponentData = &Data->Components[ComponentIndex];
-
-				FFlareSpacecraftComponentDescription* ComponentDescription = Catalog->Get(ComponentData->ComponentIdentifier);
+				FFlareSpacecraftComponentDescription* ComponentDescription = AllComponentDescriptions[ComponentIndex];
 
 				if (ComponentDescription->Type == EFlarePartType::RCS)
 				{
@@ -635,8 +633,8 @@ float UFlareSimulatedSpacecraftDamageSystem::GetSubsystemHealthInternal(EFlareSu
 			for (int32 ComponentIndex = 0; ComponentIndex < Data->Components.Num(); ComponentIndex++)
 			{
 				FFlareSpacecraftComponentSave* ComponentData = &Data->Components[ComponentIndex];
+				FFlareSpacecraftComponentDescription* ComponentDescription = AllComponentDescriptions[ComponentIndex];
 
-				FFlareSpacecraftComponentDescription* ComponentDescription = Catalog->Get(ComponentData->ComponentIdentifier);
 				if (ComponentDescription && ComponentDescription->GeneralCharacteristics.LifeSupport)
 				{
 					Health = GetDamageRatio(ComponentDescription, ComponentData);
@@ -652,8 +650,7 @@ float UFlareSimulatedSpacecraftDamageSystem::GetSubsystemHealthInternal(EFlareSu
 			for (int32 ComponentIndex = 0; ComponentIndex < Data->Components.Num(); ComponentIndex++)
 			{
 				FFlareSpacecraftComponentSave* ComponentData = &Data->Components[ComponentIndex];
-
-				FFlareSpacecraftComponentDescription* ComponentDescription = Catalog->Get(ComponentData->ComponentIdentifier);
+				FFlareSpacecraftComponentDescription* ComponentDescription = AllComponentDescriptions[ComponentIndex];
 
 				if (ComponentDescription->GeneralCharacteristics.ElectricSystem)
 				{
@@ -669,22 +666,25 @@ float UFlareSimulatedSpacecraftDamageSystem::GetSubsystemHealthInternal(EFlareSu
 		{
 			float Total = 0.f;
 			float WeaponCount = 0;
-			for (int32 ComponentIndex = 0; ComponentIndex < Data->Components.Num(); ComponentIndex++)
+
+			TArray<FFlareSpacecraftComponentSave*> WeaponComponentPointers = Spacecraft->GetWeaponComponentPointers();
+			TArray<FFlareSpacecraftComponentDescription*> WeaponComponentDescriptions = Spacecraft->GetWeaponComponentDescriptions();
+			int32 ComponentsNum = WeaponComponentPointers.Num();
+
+			// List components
+			for (int32 ComponentIndex = 0; ComponentIndex < ComponentsNum; ComponentIndex++)
 			{
-				FFlareSpacecraftComponentSave* ComponentData = &Data->Components[ComponentIndex];
+				FFlareSpacecraftComponentSave* ComponentData = WeaponComponentPointers[ComponentIndex];
+				FFlareSpacecraftComponentDescription* ComponentDescription = WeaponComponentDescriptions[ComponentIndex];
 
-				FFlareSpacecraftComponentDescription* ComponentDescription = Catalog->Get(ComponentData->ComponentIdentifier);
+				WeaponCount += 1.f;
+				int32 MaxAmmo = ComponentDescription->WeaponCharacteristics.AmmoCapacity;
+				int32 CurrentAmmo = MaxAmmo - ComponentData->Weapon.FiredAmmo;
 
-				if (ComponentDescription->Type == EFlarePartType::Weapon)
-				{
-					WeaponCount += 1.f;
-					int32 MaxAmmo = ComponentDescription->WeaponCharacteristics.AmmoCapacity;
-					int32 CurrentAmmo = MaxAmmo - ComponentData->Weapon.FiredAmmo;
-
-					bool WithAmmo = (Type == EFlareSubsystem::SYS_WeaponAndAmmo);
-					Total += GetClampedUsableRatio(ComponentDescription, ComponentData)	* ((CurrentAmmo > 0 || !WithAmmo) ? 1 : 0);
-				}
+				bool WithAmmo = (Type == EFlareSubsystem::SYS_WeaponAndAmmo);
+				Total += GetClampedUsableRatio(ComponentDescription, ComponentData)	* ((CurrentAmmo > 0 || !WithAmmo) ? 1 : 0);
 			}
+
 			if (WeaponCount == 0)
 			{
 				Health = 0;
@@ -703,8 +703,7 @@ float UFlareSimulatedSpacecraftDamageSystem::GetSubsystemHealthInternal(EFlareSu
 			for (int32 ComponentIndex = 0; ComponentIndex < Data->Components.Num(); ComponentIndex++)
 			{
 				FFlareSpacecraftComponentSave* ComponentData = &Data->Components[ComponentIndex];
-
-				FFlareSpacecraftComponentDescription* ComponentDescription = Catalog->Get(ComponentData->ComponentIdentifier);
+				FFlareSpacecraftComponentDescription* ComponentDescription = AllComponentDescriptions[ComponentIndex];
 
 				if (ComponentDescription->GeneralCharacteristics.HeatSink)
 				{

@@ -682,7 +682,6 @@ FText UFlareSimulatedSector::GetSectorDescription() const
 //no out reasons, just abort upon finding a false condition
 bool UFlareSimulatedSector::CanBuildStation(FFlareSpacecraftDescription* StationDescription, UFlareCompany* Company, bool IgnoreCost, bool InComplex, bool InComplexSpecial)
 {
-
 	// Station technology
 	if (!Company->IsTechnologyUnlockedStation(StationDescription))
 	{
@@ -690,7 +689,14 @@ bool UFlareSimulatedSector::CanBuildStation(FFlareSpacecraftDescription* Station
 	}
 
 	// The sector must be known
-	if (!Company->IsVisitedSector(this))
+	if (Company->IsPlayerCompany())
+	{
+		if (!Company->IsVisitedSector(this))
+		{
+			return false;
+		}
+	}
+	else if (!Company->IsKnownSector(this))
 	{
 		return false;
 	}
@@ -709,7 +715,7 @@ bool UFlareSimulatedSector::CanBuildStation(FFlareSpacecraftDescription* Station
 	}
 
 	// Too many stations
-	if (!Company->IsPlayerCompany() && GetSectorStations().Num() > AI_MAX_STATION_PER_SECTOR)
+	if (!Company->IsPlayerCompany() && SectorStations.Num() >= AI_MAX_STATION_PER_SECTOR)
 	{
 		return false;
 	}
@@ -794,9 +800,17 @@ bool UFlareSimulatedSector::CanBuildStation(FFlareSpacecraftDescription* Station
 	}
 
 	// The sector must be known
-	if (!Company->IsVisitedSector(this))
+	if (Company->IsPlayerCompany())
 	{
-		OutReasons.Add(LOCTEXT("StationVisitRequired", "You need to visit the sector first"));
+		if (!Company->IsVisitedSector(this))
+		{
+			OutReasons.Add(LOCTEXT("StationVisitRequired", "You need to visit the sector first"));
+			Result = false;
+		}
+	}
+	else if (!Company->IsKnownSector(this))
+	{
+		OutReasons.Add(LOCTEXT("StationKnownRequired", "You need to know about the sector first"));
 		Result = false;
 	}
 
@@ -825,7 +839,7 @@ bool UFlareSimulatedSector::CanBuildStation(FFlareSpacecraftDescription* Station
 	}
 
 	// Too many stations
-	if (!Company->IsPlayerCompany() && GetSectorStations().Num() > AI_MAX_STATION_PER_SECTOR)
+	if (!Company->IsPlayerCompany() && GetSectorStations().Num() >= AI_MAX_STATION_PER_SECTOR)
 	{
 		OutReasons.Add(LOCTEXT("AIBuildTooManyStations", "AI can not build too much stations"));
 		Result = false;
@@ -1467,7 +1481,7 @@ FFlareSectorBattleState UFlareSimulatedSector::UpdateSectorBattleState(UFlareCom
 	FFlareSectorBattleState BattleState;
 	BattleState.Init();
 
-	if (this == nullptr || GetSectorShips().Num() == 0)
+	if (this == nullptr || SectorShips.Num() == 0)
 	{
 		return BattleState;
 	}
@@ -1496,9 +1510,9 @@ FFlareSectorBattleState UFlareSimulatedSector::UpdateSectorBattleState(UFlareCom
 	int DangerousNeutralActiveSpacecraftCount = 0; 
 
 	// Look at every spacecraft
-	for (int SpacecraftIndex = 0; SpacecraftIndex < GetSectorShips().Num(); SpacecraftIndex++)
+	for (int SpacecraftIndex = 0; SpacecraftIndex < SectorShips.Num(); SpacecraftIndex++)
 	{
-		UFlareSimulatedSpacecraft* Spacecraft = GetSectorShips()[SpacecraftIndex];
+		UFlareSimulatedSpacecraft* Spacecraft = SectorShips[SpacecraftIndex];
 		UFlareCompany* OtherCompany = Spacecraft->GetCompany();
 
 		if (!Spacecraft->GetDamageSystem()->IsAlive() || Spacecraft->IsDestroyed())
@@ -1560,9 +1574,9 @@ FFlareSectorBattleState UFlareSimulatedSector::UpdateSectorBattleState(UFlareCom
 	}
 
 	// Look at every station
-	for (int SpacecraftIndex = 0; SpacecraftIndex < GetSectorStations().Num(); SpacecraftIndex++)
+	for (int SpacecraftIndex = 0; SpacecraftIndex < SectorStations.Num(); SpacecraftIndex++)
 	{
-		UFlareSimulatedSpacecraft* Spacecraft = GetSectorStations()[SpacecraftIndex];
+		UFlareSimulatedSpacecraft* Spacecraft = SectorStations[SpacecraftIndex];
 		UFlareCompany* OtherCompany = Spacecraft->GetCompany();
 
 		if (!Spacecraft->GetDamageSystem()->IsAlive())

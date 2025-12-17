@@ -903,12 +903,6 @@ void SFlareSpacecraftInfo::UpdateCapabilitiesInfo()
 			float Efficiency = TargetSpacecraft->GetStationEfficiency();
 			int DurationMalus = FMath::FloorToInt(UFlareFactory::GetProductionMalus(Efficiency));
 
-/*
-	float Efficiency = Parent->GetStationEfficiency();
-	float Malus = GetProductionMalus(Efficiency);
-	int64 ProductionTime = FMath::FloorToInt(Cycle.ProductionTime * Malus);
-
-*/
 			if (DurationMalus > 1)
 			{
 				float DamageRatio = TargetSpacecraft->GetDamageRatio();

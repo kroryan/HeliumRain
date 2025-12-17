@@ -161,9 +161,9 @@ The physics of the game are highly detailed. Power-hungry components will glow r
 											.Text(LOCTEXT("OverviewComputerSpecsMain", "\
 Helium Rain is built for high-end Windows and Linux computers. We recommend the following:\n\n\
     \u2022A high-end video card such as the nVidia GTX970 or the AMD R290;\n\
-	\u2022A quad - core processor;\n\
+	\u2022A quad-core processor;\n\
 	\u20228GB of RAM;\n\
-	\u2022A modern 64 - bits operating system(Windows 7 or Ubuntu 14.04).\n\n\
+	\u2022A modern 64-bits operating system(Windows 7 or Ubuntu 14.04).\n\n\
 Helium Rain does not support Mac OS X or other platforms."))
 										]
 
@@ -1586,53 +1586,128 @@ Companies are the factions which control the entire environment in Helium Rain. 
 				[
 					SNew(SBox)
 					.WidthOverride(2.2 * Theme.ContentWidth)
-				.HAlign(HAlign_Left)
-				.VAlign(VAlign_Fill)
-				[
-					SNew(SHorizontalBox)
-					// Info block
-				+ SHorizontalBox::Slot()
-				.HAlign(HAlign_Left)
-				.VAlign(VAlign_Top)
-				.AutoWidth()
-				[
-					// Data
-					SNew(SVerticalBox)
-					+ SVerticalBox::Slot()
-				.AutoHeight()
-				.Padding(Theme.ContentPadding)
-				[
-					SNew(SScrollBox)
-					.Style(&Theme.ScrollBoxStyle)
-				.ScrollBarStyle(&Theme.ScrollBarStyle)
+					.HAlign(HAlign_Left)
+					.VAlign(VAlign_Fill)
+					[
+						SNew(SHorizontalBox)
+						// Info block
+						+ SHorizontalBox::Slot()
+						.HAlign(HAlign_Left)
+						.VAlign(VAlign_Top)
+						.AutoWidth()
+					[
+						// Data
+						SNew(SVerticalBox)
+						+ SVerticalBox::Slot()
+					.AutoHeight()
+					.Padding(Theme.ContentPadding)
+					[
+						SNew(SScrollBox)
+						.Style(&Theme.ScrollBoxStyle)
+						.ScrollBarStyle(&Theme.ScrollBarStyle)
 
-				+ SScrollBox::Slot()
-				.Padding(Theme.ContentPadding)
+						+ SScrollBox::Slot()
+						.Padding(Theme.ContentPadding)
 				[
 					SNew(SHorizontalBox)
 					+ SHorizontalBox::Slot()
-				.Padding(Theme.ContentPadding)
-				.AutoWidth()
-				.HAlign(HAlign_Left)
-				.VAlign(VAlign_Top)
-				[
+					.Padding(Theme.ContentPadding)
+					.AutoWidth()
+					.HAlign(HAlign_Left)
+					.VAlign(VAlign_Top)
+					[
 					SNew(SVerticalBox)
 					+SVerticalBox::Slot()
 					.AutoHeight()
-				[
-					SNew(STextBlock)
-					.Text(LOCTEXT("VersionHRFM", "HRFM Version History"))
-				.TextStyle(&Theme.SubTitleFont)
-				]
+					[
+						SNew(STextBlock)
+						.Text(LOCTEXT("VersionHRFM", "HRFM Version History"))
+						.TextStyle(&Theme.SubTitleFont)
+					]
 						+ SVerticalBox::Slot()
 						.AutoHeight()
 						[
 							SNew(STextBlock)
 								.WrapTextAt(TextWrappingBig)
 								.TextStyle(&Theme.TextFont)
-								.Text(LOCTEXT("VersionHistoryHRFM1.4.3", "Created by Wanabe\n\
+								.Text(LOCTEXT("VersionHistoryHRFM1.4.4", "Created by Wanabe\n\
 https://github.com/SirWanabe/HeliumRain\n\n\
-1.4.3\n\n\
+1.4.4\n\n\
+(UI) Trade routes now have up and down arrow buttons to manipulate their sorting order\n\
+(UI) Added Duplicate Trade Route button inside the trade route menu.Clicking this will create a new trade route with the same configuration as what it was copied from.\n\
+(UI) Added copy operations button in trade routes, allowing the ability to copy operations from one sector to another within the same trade-route.\n\
+(UI) Added Show Faction Colours option in settings menu. If enabled will show the new \"PrimaryFactionColor\" as defined in the faction definition in certain areas on the UI. If the value is undefined the default white text colour will be displayed.\n\
+(UI) Stations which are a contract target change the icon next to their name in the sector view to reflect this information\n\
+(UI) Mouse menu now changes colours of certain elements if they are relevant to the currently selected objective\n\
+(UI) Mouse menu will now contextually add sectors or stations relevant to the current objective in the first layer of the mouse menu\n\
+(UI) Added Transactions button for owned stations/ships\n\
+(UI) Sector menu now displays the quantity of viewed spacecraft/fleets\n\
+(UI) Economy Stations/Ship menu now more accurately displays the quantity of viewed objects based on the selected filtering\n\
+(UI) Ordering the player fleet to move on the orbital menu will no longer cause the screen to fade to black\n\
+(UI) When building stations in a distant sector the sector menu will no longer do a full refresh(fade to black and re-enter screen)\n\
+(UI) The slowest ship in a fleet is indicated in the fleet menu with an asterisk*\n\
+(UI) Previous contracts section now has the newest previous contract at the top of the display\n\
+(UI) Contracts menu now has a toggle to show / hide previous contracts\n\
+(UI) Events section now displays information about stations that are under active construction\n\
+\n\
+(QoL) Contracts which require a ship to dock at the station(IE VIP contract) will automatically be completed upon the fleets arrival to the sector if it is not the currently active sector\n\
+(QoL) Increased maximum length of custom named ships and enabled the ability to rename stations\n\
+(QoL) Out of sector trades will now allow for multiple trades between the same spacecraft in the same day\n\
+\n\
+(Balance) Company value now accounts for the value of sector licenses\n\
+(Balance) Upon reaching maximum station level all remaining resources in the stations construction bay are moved to their normal production bay if there is available cargo space\n\
+\n\
+(Other) Added in options to the settings menu to disable external game and combat logs\n\
+(Other) Added option to enable key bind logging to output all the detected game keybinds\n\
+\n\
+(Controls) It is now possible to invert the pitch and yaw input for game-pads\n\
+(Controls) Added separate disable mouse cursor toggle options for gamepads and joysticks.When toggle is enabled the menu mouse inputs in menus from the gamepad/joystick will be disabled.\n\
+(Controls)Added Mouse Cursor deadzone which sets the deadzone for the emulated mouse cursor for Joysticks and Gamepads\n\
+(Controls) Added clear target and target docked station binds\n\
+(Controls) Added Previous Ship/Station, Enemy and Objective target binds\n\
+(Controls) Added Toggle Lock Direction bind\n\
+(Controls) Added Toggle Camera panning bind. Toggle controls whether mouse controls camera angles or the ship itself for third person ship piloting mode.When toggle camera panning mode is disabled 2D HUD elements will become visible.\n\
+(Controls) Added toggle anticollision mode bind.\n\
+(Controls) Added open help menu bind\n\
+(Controls) Added Camera Pan bind. While holding this key down mouse/joystick movement will pan the camera while in external camera mode.\n\
+(Controls) Added Horizontal/Vertical camera axis for Joysticks. Specifies which axis can rotate the camera in external camera mode.\n\
+\n\
+AI Companies now take into simple consideration the current stockpile vs needs when assessing which station to construct\n\
+\n\
+(Active Simulation) Player ships/fleets that are set to auto-trading will now buy / sell wares in the the current sector automatically, like how the AI Company ships do\n\
+(Active Simulation) Player ships/fleets that are set to an active trade route will now mimic their trade routes current operation if it's a buy/sell operation\n\
+(Active Simulation) Improved ship navigation when intersecting with a station while trying to dock to another station\n\
+(Active Simulation) Improved ship navigation in The Farm when docking to a station\n\
+(Active Simulation) Slightly increased ship caution around the Blue Heart station\n\
+\n\
+(Performance) Re-enabled ship cache, enabling better load-times in sectors. Former FPS slowdown seems to no longer occur.\n\
+(Performance) Optimised heavier game logic areas to significantly improve the day simulation speed\n\
+\n\
+Fixed(HRFanMod): Crash when viewing the settings menu in skirmish mode\n\
+Fixed(HRFanMod): Tech requirements for certain substations were not properly hardcoded. They would always receive a production penalty for not owning techs even if they were owned.\n\
+Fixed(HRFanMod): Spinning parts of stations not actually spinning\n\
+Fixed(HRFanMod): The quantities listed for auto trade ships in the active sector when selling goods was inaccurate\n\
+Fixed(HRFanMod): No more text jitter on resource mode display(where it displays output/input etc)\n\
+Fixed(HRFanMod): Clicking mouse menu interactions which opens a menu could sometimes trigger opening the window twice.\n\
+Fixed(HRFanMod): Fly option in the mouse menu doesn't care if the selected ship is in the same fleet as the player\n\
+Fixed(HRFanMod): Viewing the sector view menu while travelling wouldn't update the menu to the arrived sector until an extra day afterwards.\n\
+Fixed(HRFanMod): Stations built into complexes base their technology requirement for production slowdown on their own technology requirements rather than the complex itself\n\
+Fixed(HRFanMod?): After being captured substations sometimes moved their physical location in space away from their intended position in an attempt to avoid possible collisions with their main station\n\
+Fixed(Vanilla): Rare crash\n\
+Fixed(Vanilla): In the manual trade screen, overflow cargo slots that have nothing in them are now hidden\n\
+Fixed(Vanilla): Using the toggle weapon/combat bind while in external camera mode will no longer immediately deactivate the weapon again after switching to first person view\n\
+Fixed(Vanilla): Changing operation settings in a trade route will immediately update suggested purchases/sales\n\
+Fixed(Vanilla): AFlareSpacecraft::GetOwnerSector() comparing wrong values and so would return the wrong sector\n\
+Fixed(Vanilla?): In certain scenarios after the sector reload would happen the player would be in their ship in third person with the first person cockpit visible\n\
+"))
+						]
+						+ SVerticalBox::Slot()
+						.AutoHeight()
+						[
+							SNew(STextBlock)
+								.WrapTextAt(TextWrappingBig)
+								.TextStyle(&Theme.TextFont)
+								.Text(LOCTEXT("VersionHistoryHRFM1.4.3", "1.4.3\n\n\
 (Feature) Research tiers are now unlocked from directly spending Research Points (RP) as opposed to being granted the levels automatically.\n\
 There is an increasing RP discount for unlocking the next research tier as the previous research tier gets completed.\n\
 Unlocking a new research tier will give an immediate reduction to the current research inflation, however research inflation will increase slightly from there on for each tech level unlocked.\n\
@@ -1759,10 +1834,10 @@ AI Companies can now launch attacks from multiple sectors and coordinate the tra
 (UI) Tool-Tips for SectorButtons can now display the ETA of the selected fleet from the orbital menu.\n\
 (UI) Mouse menu can now accept left and right click as inputs. \"Fire\" bind will work as a selection option. \"Back Menu\" bind will work as close/back option.\n\
 (UI) Mouse menu now places \"Protect, Attack Military, Attack Stations, Attack Civilians\" fleet tactics into new \"Fleet\" sub menu.\n\
-(UI) Mouse menu - Added in 2 new fleet stances \"Destroy Military / Civilian\"\n\
-(UI) Mouse menu - Added Repair/Rearm button in mouse menu Fleet sub menu.\n\
-(UI) Mouse menu - Added Travel sub-menu to initiate travel for player fleet.\n\
-(UI) Mouse menu - Added Contracts sub-menu.\n\
+(UI) Mouse menu Added in 2 new fleet stances \"Destroy Military / Civilian\"\n\
+(UI) Mouse menu Added Repair/Rearm button in mouse menu Fleet sub menu.\n\
+(UI) Mouse menu Added Travel sub-menu to initiate travel for player fleet.\n\
+(UI) Mouse menu Added Contracts sub-menu.\n\
 (UI) Trade / Upgrade options will appear in the mouse-menu if auto-docking is unlocked.\n\
 (UI) During GlobalWar event individual messages of declaring war or peace will not be sent.\n\
 (UI) Moved \"Gamma\" setting to Graphics section\n\
@@ -1806,17 +1881,17 @@ Fixed(Vanilla) : Fixed several other issues with station complexes, including ot
 					.TextStyle(&Theme.TextFont)
 					.Text(LOCTEXT("VersionHistoryHRFM1.4.0", "1.4.0\n\n\
 (UI) Trade Route overhaul\n\
-(UI - Trade Route) Condensed \"Load\", \"Buy\" and \"Load / Buy\" operations into \"Load\"\n\
-(UI - Trade Route) Condensed \"Unload\", \"Sell\", \"Unload / Sell\", \"Donate\", \"Unload / Donate\" operations into \"Unload\"\n\
-(UI - Trade Route) Created \"Goto Operation\" and \"Maintenance\" Operation\n\
-(UI - Trade Route) When Goto Operation begins the Trade Route will move their current Operation to one selected by the Goto Operation\n\
-(UI - Trade Route) When Maintenance Operation begins the fleet will attempt to Repair and /or Rearm, depending on the Operations settings\n\
-(UI - Trade Route) Increased total amount of sectors for a Trade Route by 1. (4 to 5)\n\
-(UI - Trade Route) Added in conditions for operations. \"Percent of Times\", \"Load Percentage\", \"Requires Maintenance\", \"At War\". All conditions must be met to proceed with the operation. Use in combination with \"Wait Days\" to give them a timeout.\n\
-(UI - Trade Route) For Load and Unload operations, added in sliders \"Trade Self Priority\" and \"Trade Others Priority\". This sets the likely-hood of the operation interacting with owned or non-owned assets.\n\
-(UI - Trade Menu) Now has a \"Change Source\" button to allow the player to quickly go through their available ships for sector trading with lower amount of total clicks.\n\
-(UI - Trade Menu) Will now report when there are no docks available.\n\
-(UI - Trade Menu) It's now possible to use the \"Trade\" option directly from other stations to pre-select them in the trade window.\n\
+(UI) Trade Route Condensed \"Load\", \"Buy\" and \"Load / Buy\" operations into \"Load\"\n\
+(UI) Trade Route Condensed \"Unload\", \"Sell\", \"Unload / Sell\", \"Donate\", \"Unload / Donate\" operations into \"Unload\"\n\
+(UI) Trade Route Created \"Goto Operation\" and \"Maintenance\" Operation\n\
+(UI) Trade Route When Goto Operation begins the Trade Route will move their current Operation to one selected by the Goto Operation\n\
+(UI) Trade Route When Maintenance Operation begins the fleet will attempt to Repair and /or Rearm, depending on the Operations settings\n\
+(UI) Trade Route Increased total amount of sectors for a Trade Route by 1. (4 to 5)\n\
+(UI) Trade Route Added in conditions for operations. \"Percent of Times\", \"Load Percentage\", \"Requires Maintenance\", \"At War\". All conditions must be met to proceed with the operation. Use in combination with \"Wait Days\" to give them a timeout.\n\
+(UI) Trade Route For Load and Unload operations, added in sliders \"Trade Self Priority\" and \"Trade Others Priority\". This sets the likely-hood of the operation interacting with owned or non-owned assets.\n\
+(UI) Trade Menu Now has a \"Change Source\" button to allow the player to quickly go through their available ships for sector trading with lower amount of total clicks.\n\
+(UI) Trade Menu Will now report when there are no docks available.\n\
+(UI) Trade Menu It's now possible to use the \"Trade\" option directly from other stations to pre-select them in the trade window.\n\
 \n\
 (Feature) New feature : Company Whitelists.\n\
 (UI - Company Whitelist) Menu is accessed from the Company screen. Whitelists can be set as the overall default for the Company and also set for fleets or individual ships/stations.\n\
@@ -1831,9 +1906,9 @@ Whitelists are used to enable or disable trade from other companies or to specif
 (UI) Changing trade routes on the orbital menu will update the fleets list. Showing or hiding any fleets from the available list\n\
 (UI) Economy menu Sub-menu Stations/Ships now displays total quantity of stations/ships\n\
 (UI) Economy menu Sub-menu Population now displays total average and also totals of each value\n\
-(UI) Upgrade station button now has a tool - tip if it's not available\n\
+(UI) Upgrade station button now has a tool-tip if it's not available\n\
 (UI) Trade button is disabled while travelling\n\
-(UI) Resources subcategory in help - file now moved under \"Statistical Information\". Information regarding resources is now generated from game data\n\
+(UI) Resources subcategory in help-file now moved under \"Statistical Information\". Information regarding resources is now generated from game data\n\
 \n\
 (Modding) Added StartVarianceMinInputs, StartVarianceMaxInputs, StartVarianceMinOutputs, StartVarianceMaxOutputs variables for FFlareCompanyStartingShips to enable changing station starting resource levels\n\
 (Modding) Added IsNotMilitary bool to FFlareSpacecraftDescription. Enable to treat a weaponized ship as non-military. IE: Have defensive turrets on a freighter but want to disable military behaviours such as engaging enemy ships or AI Companies using specifically for attacking\n\
@@ -1847,7 +1922,7 @@ Whitelists are used to enable or disable trade from other companies or to specif
 (Balance) Stations being captured or without their technology unlocked will now have a reduction in their production efficiency\n\
 (Balance) Tweaks to some aspects of AI Budget handling\n\
 (Balance) It is no longer possible to upgrade stations without the local sector license and required technology\n\
-(Balance) Universe starting condition altered, every non - player faction begins with 4 Solens(Old: 33, New 48). Lowered effect of starting Economy Level on some stations. Increased starting Steel factory by 2, Hydrogen Pumps by 2 and Iron Mines by 2\n\
+(Balance) Universe starting condition altered, every non-player faction begins with 4 Solens(Old: 33, New 48). Lowered effect of starting Economy Level on some stations. Increased starting Steel factory by 2, Hydrogen Pumps by 2 and Iron Mines by 2\n\
 \n\
 (Performance): FlareSectorButton no longer recalculates its display name and text every tick\n\
 \n\
@@ -1925,7 +2000,7 @@ Fixed(HRFanMod): If reentering a sector quickly(such as skipping a single day) S
 Fixed(HRFanMod): Sometimes the auto-docking system would fail.\n\
 Fixed(Vanilla): Station menu 'Docked Ships' section can now see the ships docked within attached complex elements\n\
 Fixed(Vanilla): sudden frame rate drop in situations when turrets are trying to target during a battle where bombs are involved\n\
-Fixed(Vanilla): sudden frame rate drop in situations involving Flak - weaponry. Also spread the flak damage process across multiple ticks, averaging out the fps impact in heavy situations.\n\
+Fixed(Vanilla): sudden frame rate drop in situations involving Flak-weaponry. Also spread the flak damage process across multiple ticks, averaging out the fps impact in heavy situations.\n\
 Fixed(Vanilla): AI cargo ships trying to dock in sector could not find a friendly station to dock at\n\
 Fixed(Vanilla): Damaged stations constantly heat up over time, and as such their temperature could increase to multiple thousands of Kelvin which caused them to emit extremely bright, blinding lights.As a work around the maximum temperature value for the visual effect now has an upper limit.\n\
 Fixed(Vanilla): contracts / quests can now see station complex children for completion conditions\n\
@@ -2350,7 +2425,7 @@ Early Access 27/08/17\n\n\
 		\u2022Fix color picker resetting to \"round\" colors\n\
 		\u2022Fix docking helpers on L ships\n\
 		\u2022Fix meteorite quests displaying empty when the station is destroyed\n\
-		\u2022Fix out - of - screen in some resolutions\n\
+		\u2022Fix out-of-screen in some resolutions\n\
 		\u2022Fix stations pushing bank account to negative values\n\
 		\u2022Fix a collection of trade bugs\n\
 		\u2022Fix cut text on technology menu, trade route menu\n\
@@ -2394,7 +2469,7 @@ Early Access 25/08/17\n\n\
 		\u2022Add gamma settings, input sensitivity setting\n\
 		\u2022Make RCS effects more agressive in reaction times\n\
 		\u2022Make the sky slightly dynamic\n\
-		\u2022Make Hela slightly better - looking\n\n\
+		\u2022Make Hela slightly better-looking\n\n\
 Early Access 22/08/17\n\n\
 	New features & content\n\
 		\u2022Special characteristics of stations are now shown in UI & HUD : shipyard, station in construction, contract objective, and so on.\n\
@@ -2426,7 +2501,7 @@ Early Access 20/08/17\n\n\
 	New features & content\n\
 		\u2022Full support for gamepad & joystick\n\
 		\u2022UI scaling at high resolutions\n\
-		\u2022Field - of - view setting\n\
+		\u2022Field-of-view setting\n\
 		\u2022Key bindings to cut speed, start a trade\n\n\
 	Gameplay changes\n\
 		\u2022Nerf the collision alarm to a more aggressive threshold\n\
@@ -2457,7 +2532,7 @@ This is the first public release in Early Access. Enjoy the game !\n\n\
 		\u2022New design for the Atlas freighter\n\
 		\u2022Upgrade rendering quality for the Solen freighter & Orca bomber\n\
 		\u2022Upgrade hull detail with a nicer pattern\n\
-		\u2022Change Fleet Supply icon to remove non - localized text"))
+		\u2022Change Fleet Supply icon to remove non-localized text"))
 											]
 									]
 								]
@@ -2521,7 +2596,7 @@ Early Access 17/08/17\n\n\
 	New features & content\n\
 		\u2022The player fleet can now be renamed\n\
 		\u2022Add basic mouse emulation for joysticks\n\
-		\u2022Add option to invert Y - axis\n\n\
+		\u2022Add option to invert Y-axis\n\n\
 	Gameplay changes\n\
 		\u2022Add reputation penalty when shooting incapacited ships\n\
 		\u2022Balance pirates\n\
@@ -2530,7 +2605,7 @@ Early Access 17/08/17\n\n\
 	Bugs fixed\n\
 		\u2022Fix 'Request peace' button wording if other company want peace\n\
 		\u2022Fix docking bug where the docking state seemed corrupted\n\
-		\u2022Fix z - fighting on Outpost stations\n\
+		\u2022Fix z-fighting on Outpost stations\n\
 		\u2022Fix strange dock layout on farms\n\
 		\u2022Fix artifacts on Fuji exhaust\n\n\
 	Graphics & UI\n\
@@ -2545,7 +2620,7 @@ Early Access 03 / 08 / 17\n\
 		\u2022Balance trade contracts to allow multiple contracts\n\
 		\u2022Make AI take prisoners after battle and guard them\n\n\
 	Bugs fixed\n\
-		\u2022Fix auto - docking technology not unlocking auto - docking option in menus\n\
+		\u2022Fix auto-docking technology not unlocking auto-docking option in menus\n\
 		\u2022Fix crash and game state corruption on game over while docked\n\
 		\u2022Remove debugging shortcut\n\
 		\u2022Wording and translation fixes\n\n\
@@ -2553,9 +2628,9 @@ Early Access 30 / 07 / 17\n\
 	New features & content\n\
 		\u2022New manual docking gameplay and tutorial\n\
 		\u2022New music for some sectors\n\
-		\u2022New high - resolution screenshots shortcut on R key\n\n\
+		\u2022New high-resolution screenshots shortcut on R key\n\n\
 	Gameplay changes\n\
-		\u2022Move Hub station to end - game because it's a common mistake to buy one early\n\
+		\u2022Move Hub station to end-game because it's a common mistake to buy one early\n\
 		\u2022Remove support for \"no-cockpit\" HUD because it's too much work to maintain\n\n\
 	Graphics & UI\n\
 		\u2022Improve farming stations\n\
@@ -2573,7 +2648,7 @@ Early Access 30 / 07 / 17\n\
 Beta - 230717\n\
 	New features & content\n\
 		\u2022Add Steam achievements\n\
-		\u2022Add new scanner mini - game for inspection in Pendulum contract\n\n\
+		\u2022Add new scanner mini-game for inspection in Pendulum contract\n\n\
 	Gameplay changes\n\
 		\u2022No more enable pilot in fire director mode for heavy ships\n\
 		\u2022Allow docking with menu during navigation tutorial\n\n\
@@ -2583,7 +2658,7 @@ Beta - 230717\n\
 		\u2022Make fleet to travel selection more persistent\n\
 		\u2022Update game icon\n\
 		\u2022Rework ship info buttons layout\n\
-		\u2022Disable no - cockpit mode\n\
+		\u2022Disable no-cockpit mode\n\
 		\u2022Use company customization pattern as background pattern in UI\n\
 		\u2022Improve quality of weapon impacts\n\
 		\u2022Make the sky slightly brighter\n\
@@ -2735,7 +2810,7 @@ Beta - 120617\n\
 		\u2022increase inter company UBI contribution from 0.001 to 0.002\n\n\
 	Bugs\n\
 		\u2022ui : fix crash when editing a trade route operation if no fleet was assigned\n\
-		\u2022ui : fix tool - tip for when the \"Remove ship\" button in edit fleet menu was disabled\n\
+		\u2022ui : fix tool-tip for when the \"Remove ship\" button in edit fleet menu was disabled\n\
 		\u2022ui : make failed contracts due to expiration date not display \"1 day left\"\n\
 		\u2022ui : fix minor interface glitch in not visited sectors\n\
 		\u2022ui : fix rotation of HR logo in menus\n\
@@ -2976,13 +3051,13 @@ Once this is done, you can launch the Unreal Engine editor right away. You don't
 											.WrapTextAt(TextWrappingBig)
 											.Text(LOCTEXT("SourcesContentHelpMain", "\
 This part assumes you are familiar with Unreal Engine 4. We won't provide our own guide, or detailed guides on how the game assets are structured.\n\
-You will work a lot with the Content Browser window. Make sure a folder list panel is visible on the left side of that window - toggle it with the small button below \"Add New\" on the top left. Your mod folder should appear at this point, this is where you will work from ! You can only add content here - changes elsewhere will not be applied. You can't remove existing content or update a material - you can however copy a material to the mod folder, change it, and use it for your content.\n\
+You will work a lot with the Content Browser window. Make sure a folder list panel is visible on the left side of that window-toggle it with the small button below \"Add New\" on the top left. Your mod folder should appear at this point, this is where you will work from ! You can only add content here - changes elsewhere will not be applied. You can't remove existing content or update a material - you can however copy a material to the mod folder, change it, and use it for your content.\n\
 Here are some details on Helium Rain's architecture.\n\n\
 	\u2022All of our gameplay data is created through what we call DataAssets. You can find many of them in the /Gameplay/Catalog folder of the Content Browser as examples - look at how they're built, and learn from that.\n\
 	\u2022Ships or stations have an additional Templatefile, built with UE4's Blueprint tool. Templates let us actually design the ship and place parts. These are found in /Ships/Templates and /Stations/Templates, and are referenced from the DataAssets.\n\
 	\u2022A new ship would require both a new data asset and a new template.A modified ship could only use a new data asset, and keep the base template.\n\
 	\u2022A new weapon or engine would require a data asset and a StaticMesh.\n\
-	\u2022New sectors only require a data asset, but can also feature an entire new level, if you add a sub - level to the Space map, and provide its name in the data asset.\n\n\
+	\u2022New sectors only require a data asset, but can also feature an entire new level, if you add a sub-level to the Space map, and provide its name in the data asset.\n\n\
 Talk with other modders on the Steam forums, or our Reddit forum, to get answers ! The source code for the game is also available if you've got questions. "))
 										]
 										+ SVerticalBox::Slot()

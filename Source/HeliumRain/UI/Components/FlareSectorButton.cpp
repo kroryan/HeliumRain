@@ -33,6 +33,7 @@ void SFlareSectorButton::Construct(const FArguments& InArgs)
 	OnClicked = InArgs._OnClicked;
 	Sector = InArgs._Sector;
 	PlayerCompany = InArgs._PlayerCompany;
+	AllShipsCount = -1;
 	OwnedShips = -1;
 	OwnedStations = -1;
 	NeutralShips = -1;
@@ -356,6 +357,7 @@ void SFlareSectorButton::RefreshButton()
 	}
 	else if (DisplayMode == EFlareOrbitalMode::Ships && Sector->GetSectorShips().Num() > 0)
 	{
+		AllShipsCount = 0;
 		EnemyShips = 0;
 		OwnedShips = 0;
 		NeutralShips = 0;
@@ -366,7 +368,12 @@ void SFlareSectorButton::RefreshButton()
 		for (int32 CountIndex = 0; CountIndex < TotalSectorShips; CountIndex++)
 		{
 			UFlareSimulatedSpacecraft* Ship = TotalShips[CountIndex];
+			if (Ship->GetDescription()->IsDroneShip)
+			{
+				continue;
+			}
 
+			++AllShipsCount;
 			if (Ship->GetCompany() == PlayerCompany)
 			{
 				++OwnedShips;
@@ -592,16 +599,14 @@ FText SFlareSectorButton::GetSectorText() const
 		else if (DisplayMode == EFlareOrbitalMode::Ships && Sector->GetSectorShips().Num() > 0)
 		{
 			int32 Warcount = PlayerCompany->GetWarCount(PlayerCompany);
-			int32 TotalSectorShips = Sector->GetSectorShips().Num();
 			FString DetailedShipString;
-
 			if (OwnedShips > 0)
 			{
 				FString FormattedNumber = FString::FormatAsNumber(OwnedShips);
 				DetailedShipString += FString::Printf(TEXT(", %s owned"), *FormattedNumber);
 			}
 
-			if (NeutralShips > 0 && NeutralShips != TotalSectorShips)
+			if (NeutralShips > 0 && NeutralShips != AllShipsCount)
 			{
 				FString FormattedNumber = FString::FormatAsNumber(NeutralShips);
 				DetailedShipString += FString::Printf(TEXT(", %s neut"), *FormattedNumber);
@@ -624,7 +629,7 @@ FText SFlareSectorButton::GetSectorText() const
 				}
 			}
 			SectorButtonText = Sector->GetSectorShips().Num() == 1 ? LOCTEXT("Ship", "{0} ship") : LOCTEXT("Ships", "{0} ships{1}");
-			SectorButtonText = FText::Format(SectorButtonText, FText::AsNumber(TotalSectorShips), FText::FromString(DetailedShipString));
+			SectorButtonText = FText::Format(SectorButtonText, FText::AsNumber(AllShipsCount), FText::FromString(DetailedShipString));
 		}
 
 		else if (DisplayMode == EFlareOrbitalMode::Battles)

@@ -343,13 +343,28 @@ SectorDeal AITradeHelper::FindBestDealForShipToSector(UFlareSimulatedSpacecraft*
 		return BestDeal;
 	}
 
-	int64 TravelTimeToA;
-	int64 TravelTimeToB;
+	const TArray<UFlareSimulatedSpacecraft*>& SectAStations = SectorA->GetSectorStations();
+	if (SectAStations.Num() == 0)
+	{
+		return BestDeal;
+	}
+
+	if (SectorA != SectorB)
+	{
+		const TArray<UFlareSimulatedSpacecraft*>& SectBStations = SectorB->GetSectorStations();
+		if (SectBStations.Num() == 0)
+		{
+			return BestDeal;
+		}
+	}
 
 	if (SectorB->GetSectorBattleState(Company).HasDanger)
 	{
 		return BestDeal;
 	}
+
+	int64 TravelTimeToA;
+	int64 TravelTimeToB;
 
 	if (Ship->GetCurrentSector() == SectorA)
 	{
@@ -368,12 +383,10 @@ SectorDeal AITradeHelper::FindBestDealForShipToSector(UFlareSimulatedSpacecraft*
 	else
 	{
 		// Travel time
-
 		TravelTimeToB = UFlareTravel::ComputeTravelDuration(Game->GetGameWorld(), SectorA, SectorB, Company, Ship->GetCurrentFleet());
 
 	}
 	int64 TravelTime = TravelTimeToA + TravelTimeToB;
-
 
 #if DEBUG_AI_TRADING && DEBUG_AI_TRADING_FIND_DEAL
 	if (Company->GetShortName() == DEBUG_AI_TRADING_COMPANY

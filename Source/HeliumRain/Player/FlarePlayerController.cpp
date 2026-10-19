@@ -2971,6 +2971,8 @@ void AFlarePlayerController::JoystickYawInput(float Val)
 
 void AFlarePlayerController::JoystickPitchInput(float Val)
 {
+//	FLOGV("AFlarePlayerController::JoystickPitchInput : Val %f", Val);
+
 	UFlareGameUserSettings* MyGameSettings = Cast<UFlareGameUserSettings>(GEngine->GetGameUserSettings());
 	Val *= MyGameSettings->InputSensitivity;
 
